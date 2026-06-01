@@ -5,6 +5,7 @@ import subprocess
 import argparse
 import re
 import sys
+import threading
 from scenedetect import open_video, SceneManager
 from scenedetect.detectors import ContentDetector
 from ultralytics import YOLO
@@ -640,12 +641,22 @@ def process_video_to_vertical(input_video, final_output_video):
 
     ffmpeg_process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 
+    # Drain ffmpeg's stderr on a background thread. Otherwise its pipe buffer can
+    # fill while we are still streaming frames into stdin, deadlocking both sides.
+    stderr_chunks = []
+    stderr_thread = threading.Thread(
+        target=lambda pipe, sink: sink.append(pipe.read()),
+        args=(ffmpeg_process.stderr, stderr_chunks),
+        daemon=True,
+    )
+    stderr_thread.start()
+
     cap = cv2.VideoCapture(input_video)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    
+
     frame_number = 0
     current_scene_index = 0
-    
+
     # Pre-calculate scene boundaries
     scene_boundaries = []
     for s_start, s_end in scenes:
@@ -654,66 +665,79 @@ def process_video_to_vertical(input_video, final_output_video):
     # Global tracker for single-person shots
     speaker_tracker = SpeakerTracker(cooldown_frames=30)
 
-    with tqdm(total=total_frames, desc="   Processing", file=sys.stdout) as pbar:
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+    pipe_broken = False
+    try:
+        with tqdm(total=total_frames, desc="   Processing", file=sys.stdout) as pbar:
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-            # Update Scene Index
-            if current_scene_index < len(scene_boundaries):
-                start_f, end_f = scene_boundaries[current_scene_index]
-                if frame_number >= end_f and current_scene_index < len(scene_boundaries) - 1:
-                    current_scene_index += 1
-            
-            # Determine Strategy for current frame based on scene
-            current_strategy = scene_strategies[current_scene_index] if current_scene_index < len(scene_strategies) else 'TRACK'
-            
-            # Apply Strategy
-            if current_strategy == 'GENERAL':
-                # "Plano General" -> Blur Background + Fit Width
-                output_frame = create_general_frame(frame, OUTPUT_WIDTH, OUTPUT_HEIGHT)
-                
-                # Reset cameraman/tracker so they don't drift while inactive
-                cameraman.current_center_x = original_width / 2
-                cameraman.target_center_x = original_width / 2
-                
-            else:
-                # "Single Speaker" -> Track & Crop
-                
-                # Detect every 2nd frame for performance
-                if frame_number % 2 == 0:
-                    candidates = detect_face_candidates(frame)
-                    target_box = speaker_tracker.get_target(candidates, frame_number, original_width)
-                    if target_box:
-                        cameraman.update_target(target_box)
-                    else:
-                        person_box = detect_person_yolo(frame)
-                        if person_box:
-                            cameraman.update_target(person_box)
+                # Update Scene Index
+                if current_scene_index < len(scene_boundaries):
+                    start_f, end_f = scene_boundaries[current_scene_index]
+                    if frame_number >= end_f and current_scene_index < len(scene_boundaries) - 1:
+                        current_scene_index += 1
 
-                # Snap camera on scene change to avoid panning from previous scene position
-                is_scene_start = (frame_number == scene_boundaries[current_scene_index][0])
-                
-                x1, y1, x2, y2 = cameraman.get_crop_box(force_snap=is_scene_start)
-                
-                # Crop
-                if y2 > y1 and x2 > x1:
-                    cropped = frame[y1:y2, x1:x2]
-                    output_frame = cv2.resize(cropped, (OUTPUT_WIDTH, OUTPUT_HEIGHT))
+                # Determine Strategy for current frame based on scene
+                current_strategy = scene_strategies[current_scene_index] if current_scene_index < len(scene_strategies) else 'TRACK'
+
+                # Apply Strategy
+                if current_strategy == 'GENERAL':
+                    # "Plano General" -> Blur Background + Fit Width
+                    output_frame = create_general_frame(frame, OUTPUT_WIDTH, OUTPUT_HEIGHT)
+
+                    # Reset cameraman/tracker so they don't drift while inactive
+                    cameraman.current_center_x = original_width / 2
+                    cameraman.target_center_x = original_width / 2
+
                 else:
-                    output_frame = cv2.resize(frame, (OUTPUT_WIDTH, OUTPUT_HEIGHT))
+                    # "Single Speaker" -> Track & Crop
 
-            ffmpeg_process.stdin.write(output_frame.tobytes())
-            frame_number += 1
-            pbar.update(1)
-    
-    ffmpeg_process.stdin.close()
-    stderr_output = ffmpeg_process.stderr.read().decode()
-    ffmpeg_process.wait()
-    cap.release()
+                    # Detect every 2nd frame for performance
+                    if frame_number % 2 == 0:
+                        candidates = detect_face_candidates(frame)
+                        target_box = speaker_tracker.get_target(candidates, frame_number, original_width)
+                        if target_box:
+                            cameraman.update_target(target_box)
+                        else:
+                            person_box = detect_person_yolo(frame)
+                            if person_box:
+                                cameraman.update_target(person_box)
 
-    if ffmpeg_process.returncode != 0:
+                    # Snap camera on scene change to avoid panning from previous scene position
+                    is_scene_start = (frame_number == scene_boundaries[current_scene_index][0])
+
+                    x1, y1, x2, y2 = cameraman.get_crop_box(force_snap=is_scene_start)
+
+                    # Crop
+                    if y2 > y1 and x2 > x1:
+                        cropped = frame[y1:y2, x1:x2]
+                        output_frame = cv2.resize(cropped, (OUTPUT_WIDTH, OUTPUT_HEIGHT))
+                    else:
+                        output_frame = cv2.resize(frame, (OUTPUT_WIDTH, OUTPUT_HEIGHT))
+
+                try:
+                    ffmpeg_process.stdin.write(output_frame.tobytes())
+                except BrokenPipeError:
+                    # ffmpeg died early; stop feeding frames and report below.
+                    pipe_broken = True
+                    break
+                frame_number += 1
+                pbar.update(1)
+    finally:
+        # Always release the capture and close/await ffmpeg, even on error.
+        cap.release()
+        try:
+            ffmpeg_process.stdin.close()
+        except Exception:
+            pass
+        ffmpeg_process.wait()
+        stderr_thread.join(timeout=5)
+
+    stderr_output = stderr_chunks[0].decode(errors="replace") if stderr_chunks else ""
+
+    if pipe_broken or ffmpeg_process.returncode != 0:
         print("\n   ❌ FFmpeg frame processing failed.")
         print("   Stderr:", stderr_output)
         return False
@@ -873,18 +897,27 @@ def get_viral_clips(transcript_result, video_duration):
             cost_analysis = None
         # ------------------------
 
-        # Clean response if it contains markdown code blocks
-        text = response.text
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
-        
-        result_json = json.loads(text)
+        # Clean response, tolerating markdown fences and surrounding prose.
+        text = (response.text or "").strip()
+        if text.startswith("```"):
+            text = re.sub(r"^```[a-zA-Z0-9]*\n?", "", text)
+            text = re.sub(r"\n?```\s*$", "", text).strip()
+        # Salvage: isolate the outermost JSON object if prose surrounds it.
+        if not text.startswith("{"):
+            first, last = text.find("{"), text.rfind("}")
+            if first != -1 and last > first:
+                text = text[first:last + 1]
+
+        try:
+            result_json = json.loads(text)
+        except json.JSONDecodeError as e:
+            print(f"❌ Gemini returned invalid JSON: {e}")
+            print(f"   Raw response (first 500 chars): {text[:500]}")
+            return None
+
         if cost_analysis:
             result_json['cost_analysis'] = cost_analysis
-            
+
         return result_json
     except Exception as e:
         print(f"❌ Gemini Error: {e}")
@@ -960,8 +993,11 @@ if __name__ == '__main__':
         cap = cv2.VideoCapture(input_video)
         fps = cap.get(cv2.CAP_PROP_FPS)
         frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        duration = frame_count / fps
         cap.release()
+        if not fps or fps <= 0:
+            print("⚠️ Could not read FPS from video; assuming 30.")
+            fps = 30.0
+        duration = frame_count / fps if fps else 0
 
         # 4. Gemini Analysis
         clips_data = get_viral_clips(transcript, duration)
@@ -982,35 +1018,60 @@ if __name__ == '__main__':
 
             # 5. Process each clip
             for i, clip in enumerate(clips_data['shorts']):
-                start = clip['start']
-                end = clip['end']
+                # Validate the AI-provided timestamps before they reach ffmpeg.
+                # A hallucinated/missing/out-of-range value should skip ONE clip,
+                # not crash the whole batch with a KeyError or a broken cut.
+                try:
+                    start = float(clip.get('start'))
+                    end = float(clip.get('end'))
+                except (TypeError, ValueError):
+                    print(f"   ⚠️ Skipping clip {i+1}: missing or non-numeric start/end "
+                          f"({clip.get('start')!r}–{clip.get('end')!r}).")
+                    continue
+                start = max(0.0, start)
+                if duration:
+                    end = min(duration, end)
+                if end <= start or (end - start) < 1.0:
+                    print(f"   ⚠️ Skipping clip {i+1}: invalid range {start:.2f}s–{end:.2f}s.")
+                    continue
+
                 print(f"\n🎬 Processing Clip {i+1}: {start}s - {end}s")
                 print(f"   Title: {clip.get('video_title_for_youtube_short', 'No Title')}")
-                
+
                 # Cut clip
                 clip_filename = f"{video_title}_clip_{i+1}.mp4"
                 clip_temp_path = os.path.join(output_dir, f"temp_{clip_filename}")
                 clip_final_path = os.path.join(output_dir, clip_filename)
-                
+
                 # ffmpeg cut
                 # Using re-encoding for precision as requested by strict seconds
                 cut_command = [
-                    'ffmpeg', '-y', 
-                    '-ss', str(start), 
-                    '-to', str(end), 
+                    'ffmpeg', '-y',
+                    '-ss', str(start),
+                    '-to', str(end),
                     '-i', input_video,
                     '-c:v', 'libx264', '-crf', '18', '-preset', 'fast',
                     '-c:a', 'aac',
                     clip_temp_path
                 ]
-                subprocess.run(cut_command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-                
+                cut_result = subprocess.run(cut_command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+                if (cut_result.returncode != 0
+                        or not os.path.exists(clip_temp_path)
+                        or os.path.getsize(clip_temp_path) == 0):
+                    print(f"   ❌ Skipping clip {i+1}: ffmpeg cut failed.")
+                    print("   Stderr:", cut_result.stderr.decode(errors='replace')[:500])
+                    if os.path.exists(clip_temp_path):
+                        os.remove(clip_temp_path)
+                    continue
+
                 # Process vertical
                 success = process_video_to_vertical(clip_temp_path, clip_final_path)
-                
+
                 if success:
                     print(f"   ✅ Clip {i+1} ready: {clip_final_path}")
-                
+                else:
+                    print(f"   ❌ Clip {i+1} failed during vertical reframing.")
+
                 # Clean up temp cut
                 if os.path.exists(clip_temp_path):
                     os.remove(clip_temp_path)
