@@ -5,6 +5,9 @@ import App from './App.jsx'
 import Landing from './Landing.jsx'
 import Legal from './Legal.jsx'
 
+// Entry point — not a Fast Refresh boundary, so the "only export components"
+// hint doesn't apply here.
+// eslint-disable-next-line react-refresh/only-export-components
 function Root() {
   const resolveView = () => {
     const hash = window.location.hash;

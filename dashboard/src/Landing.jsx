@@ -71,7 +71,7 @@ export default function Landing({ onLaunchApp }) {
 
         <p className="text-zinc-500 text-sm">
           Requires a free Google Gemini API key.{' '}
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" className="text-primary hover:underline">
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
             Get one here
           </a>
         </p>

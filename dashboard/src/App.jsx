@@ -219,7 +219,7 @@ function App() {
     } catch (e) {
       // localStorage full or serialization error - ignore
     }
-  }, [jobId, status, results, activeTab]);
+  }, [jobId, status, results, activeTab, processingMedia]);
 
   useEffect(() => {
     // Encrypt Gemini Key too for consistency if desired, but user asked specifically about Social integration not saving well.
@@ -246,6 +246,10 @@ function App() {
     if (uploadPostKey && userProfiles.length === 0) {
       fetchUserProfiles();
     }
+    // Fetch profiles once when the Upload-Post key becomes available. The
+    // length===0 guard already prevents re-fetching, so re-running on
+    // userProfiles/fetchUserProfiles changes would be redundant.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadPostKey]);
 
   useEffect(() => {

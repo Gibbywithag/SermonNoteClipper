@@ -53,6 +53,7 @@ export default function Gallery() {
     useEffect(() => {
         if (!hasMore || loadingMore || loading) return;
 
+        const node = loaderRef.current;
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting && hasMore && !loadingMore) {
@@ -62,13 +63,13 @@ export default function Gallery() {
             { rootMargin: '200px', threshold: 0.1 }
         );
 
-        if (loaderRef.current) {
-            observer.observe(loaderRef.current);
+        if (node) {
+            observer.observe(node);
         }
 
         return () => {
-            if (loaderRef.current) {
-                observer.unobserve(loaderRef.current);
+            if (node) {
+                observer.unobserve(node);
             }
         };
     }, [hasMore, loadingMore, loading, offset, fetchClips]);
@@ -120,7 +121,7 @@ export default function Gallery() {
             ) : (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 pb-10">
-                        {clips.map((clip, i) => (
+                        {clips.map((clip) => (
                             <GalleryCard key={`${clip.job_id}-${clip.index}`} clip={clip} />
                         ))}
                     </div>
