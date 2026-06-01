@@ -2,8 +2,10 @@ services:
   backend:
     build: .
     container_name: openshorts-backend
+    # Publish to localhost only — the API is unauthenticated and must not be
+    # reachable from the LAN. Use a reverse proxy with auth to expose it.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - .:/app
       - /app/__pycache__
@@ -14,7 +16,7 @@ services:
     build: ./dashboard
     container_name: openshorts-frontend
     ports:
-      - "5175:5173"
+      - "127.0.0.1:5175:5173"
     volumes:
       - ./dashboard:/app
       - /app/node_modules
@@ -28,7 +30,7 @@ services:
       dockerfile: render-service/Dockerfile
     container_name: openshorts-renderer
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
     volumes:
       - ./output:/output
     environment:

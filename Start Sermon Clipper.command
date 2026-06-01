@@ -52,8 +52,10 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 # Start the backend API server (FastAPI with uvicorn)
+# Bind to localhost only — this is a personal/local app and the API is
+# unauthenticated. Binding 0.0.0.0 would expose it to your whole network.
 echo "Starting backend server on port 8000..."
-uvicorn app:app --host 0.0.0.0 --port 8000 &
+uvicorn app:app --host 127.0.0.1 --port 8000 &
 BACKEND_PID=$!
 
 # Wait for backend to be ready

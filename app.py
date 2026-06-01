@@ -1,5 +1,8 @@
 import os
+import re
 import uuid
+import socket
+import ipaddress
 import subprocess
 import threading
 import json
@@ -7,6 +10,7 @@ import shutil
 import glob
 import time
 import asyncio
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 from typing import Dict, Optional, List
 from contextlib import asynccontextmanager
@@ -39,6 +43,49 @@ thumbnail_sessions: Dict[str, Dict] = {}
 publish_jobs: Dict[str, Dict] = {}  # {publish_id: {status, result, error}}
 # Semester to limit concurrency to MAX_CONCURRENT_JOBS
 concurrency_semaphore = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
+
+# ---------------------------------------------------------------------------
+# Security helpers
+# ---------------------------------------------------------------------------
+_SAFE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def is_safe_id(value: str) -> bool:
+    """True if value is a safe identifier (no path separators / traversal)."""
+    return bool(value) and bool(_SAFE_ID_RE.match(value))
+
+
+def safe_filename(name: Optional[str]) -> str:
+    """Reduce a user-supplied filename to a bare, safe basename."""
+    base = os.path.basename(name or "")
+    base = base.replace("\x00", "").lstrip(".")
+    return base or "file"
+
+
+def validate_public_url(url: str) -> str:
+    """
+    Validate a user-supplied URL before the server fetches it (SSRF guard).
+
+    Allows only http/https to publicly-routable hosts; blocks private,
+    loopback, link-local, reserved and metadata addresses (e.g. 169.254.169.254).
+    Returns the URL on success; raises HTTPException(400) otherwise.
+    """
+    try:
+        parsed = urlparse((url or "").strip())
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid URL")
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise HTTPException(status_code=400, detail="Only http(s) URLs are allowed")
+    try:
+        infos = socket.getaddrinfo(parsed.hostname, None)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not resolve URL host")
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if (ip.is_private or ip.is_loopback or ip.is_link_local
+                or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+            raise HTTPException(status_code=400, detail="URL host is not allowed")
+    return url
 
 def _relocate_root_job_artifacts(job_id: str, job_output_dir: str) -> bool:
     """
@@ -169,11 +216,24 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Enable CORS for frontend
+# Enable CORS for the local frontend only.
+# This is a local-first app: API keys are sent via headers from the dashboard
+# running on localhost. Allowing "*" together with credentials lets any website
+# the user visits drive this API, so we restrict to the known local origins.
+# Override with CORS_ALLOW_ORIGINS (comma-separated) for custom deployments.
+_default_origins = (
+    "http://localhost:5173,http://localhost:5175,"
+    "http://127.0.0.1:5173,http://127.0.0.1:5175"
+)
+ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get("CORS_ALLOW_ORIGINS", _default_origins).split(",")
+    if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -342,6 +402,10 @@ async def process_endpoint(
     if url and DISABLE_YOUTUBE_URL:
         raise HTTPException(status_code=403, detail="YouTube URL ingest is disabled on this deployment. Please upload a file you own.")
 
+    # SSRF guard: only fetch publicly-routable http(s) URLs.
+    if url:
+        url = validate_public_url(url)
+
     # Capture attestation context for legal record (IP + timestamp + UA)
     client_ip = request.client.host if request.client else "unknown"
     fwd = request.headers.get("x-forwarded-for")
@@ -369,7 +433,7 @@ async def process_endpoint(
         cmd.extend(["-u", url])
     else:
         # Save uploaded file with size limit check
-        input_path = os.path.join(UPLOAD_DIR, f"{job_id}_{file.filename}")
+        input_path = os.path.join(UPLOAD_DIR, f"{job_id}_{safe_filename(file.filename)}")
 
         # Read file in chunks to check size
         size = 0
@@ -1206,13 +1270,16 @@ async def thumbnail_upload(
     if not url and not file:
         raise HTTPException(status_code=400, detail="Must provide URL or File")
 
+    if url:
+        url = validate_public_url(url)
+
     session_id = str(uuid.uuid4())
     transcript_event = asyncio.Event()
 
     # Save file if uploaded directly
     video_path = None
     if file:
-        video_path = os.path.join(UPLOAD_DIR, f"thumb_{session_id}_{file.filename}")
+        video_path = os.path.join(UPLOAD_DIR, f"thumb_{session_id}_{safe_filename(file.filename)}")
         with open(video_path, "wb") as buffer:
             content = await file.read()
             buffer.write(content)
@@ -1309,10 +1376,11 @@ async def thumbnail_analyze(
         session_id = str(uuid.uuid4())
 
         if url:
+            url = validate_public_url(url)
             from main import download_youtube_video
             video_path, _ = download_youtube_video(url, UPLOAD_DIR)
         else:
-            video_path = os.path.join(UPLOAD_DIR, f"thumb_{session_id}_{file.filename}")
+            video_path = os.path.join(UPLOAD_DIR, f"thumb_{session_id}_{safe_filename(file.filename)}")
             with open(video_path, "wb") as buffer:
                 content = await file.read()
                 buffer.write(content)
@@ -1430,6 +1498,8 @@ async def thumbnail_generate(
     count = min(max(1, count), 6)
 
     # Save optional uploaded images
+    if not is_safe_id(session_id):
+        raise HTTPException(status_code=400, detail="Invalid session_id")
     face_path = None
     bg_path = None
     thumb_upload_dir = os.path.join(UPLOAD_DIR, f"thumb_{session_id}")
@@ -1437,12 +1507,12 @@ async def thumbnail_generate(
 
     try:
         if face and face.filename:
-            face_path = os.path.join(thumb_upload_dir, f"face_{face.filename}")
+            face_path = os.path.join(thumb_upload_dir, f"face_{safe_filename(face.filename)}")
             with open(face_path, "wb") as f:
                 f.write(await face.read())
 
         if background and background.filename:
-            bg_path = os.path.join(thumb_upload_dir, f"bg_{background.filename}")
+            bg_path = os.path.join(thumb_upload_dir, f"bg_{safe_filename(background.filename)}")
             with open(bg_path, "wb") as f:
                 f.write(await background.read())
 

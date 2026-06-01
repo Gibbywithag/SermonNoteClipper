@@ -464,23 +464,21 @@ def download_youtube_video(url, output_dir="."):
     print("📥 Downloading video from YouTube...")
     step_start_time = time.time()
 
-    cookies_path = '/app/cookies.txt'
+    cookies_path = None
     cookies_env = os.environ.get("YOUTUBE_COOKIES")
     if cookies_env:
-        print("🍪 Found YOUTUBE_COOKIES env var, creating cookies file inside container...")
+        print("🍪 Found YOUTUBE_COOKIES env var, creating temporary cookies file...")
         try:
-            with open(cookies_path, 'w') as f:
+            import tempfile
+            fd, cookies_path = tempfile.mkstemp(prefix="yt_cookies_", suffix=".txt")
+            with os.fdopen(fd, 'w') as f:
                 f.write(cookies_env)
-            if os.path.exists(cookies_path):
-                 print(f"   Debug: Cookies file created. Size: {os.path.getsize(cookies_path)} bytes")
-                 with open(cookies_path, 'r') as f:
-                     content = f.read(100)
-                     print(f"   Debug: First 100 chars of cookie file: {content}")
+            # Do NOT log cookie contents — they are session secrets.
+            print(f"   Debug: Cookies file created. Size: {os.path.getsize(cookies_path)} bytes")
         except Exception as e:
             print(f"⚠️ Failed to write cookies file: {e}")
             cookies_path = None
     else:
-        cookies_path = None
         print("⚠️ YOUTUBE_COOKIES env var not found.")
     
     # Common yt-dlp options to work around YouTube bot detection.
