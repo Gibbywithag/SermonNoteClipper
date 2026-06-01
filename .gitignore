@@ -1,0 +1,58 @@
+# Video files
+*.mp4
+*.webm
+*.mov
+*.mkv
+
+# YOLO model
+*.pt
+
+# Python virtual environment
+.venv/
+__pycache__/
+*.pyc
+
+# Temporary files / runtime dirs
+temp_*
+uploads/
+downloads/
+videos/
+output/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Secrets
+.env
+
+# Generated metadata
+*_metadata.json
+
+# Cache dirs
+.cache/
+.config/
+# Multi-agent Skills
+.agents/
+.agent/
+.claude/
+skills/
+skills-lock.json
+
+# Node
+node_modules/
+
+# Python virtual environments (also self-ignored via venv/.gitignore)
+venv/
+env/
+
+# Logs
+*.log
+
+# Large demo / sample media (kept locally, not in git)
+*.gif
+
+# Memory (Claude Code per-project memory)
+memory/
+
