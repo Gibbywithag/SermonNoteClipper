@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-OpenShorts is an AI-powered vertical video generator that transforms long YouTube videos or local uploads into viral-ready short clips (9:16 format) for TikTok, Instagram Reels, and YouTube Shorts. Uses Google Gemini 2.0 Flash for viral moment detection and title generation.
+Sermon Note Clipper is an AI-powered vertical video generator that turns full sermon recordings (YouTube links or local uploads) into 45-60 second clips (9:16 format) for Instagram Reels, TikTok, and YouTube Shorts. It uses Google Gemini (2.5 Flash by default, set via `GEMINI_MODEL`) for viral-moment detection and title generation.
+
+It is a fork of [OpenShorts](https://github.com/mutonby/openshorts), rebranded and focused for church media teams. The upstream "SaaSShorts" AI-actor UGC generator and its `/api/saasshorts/*` endpoints, `saasshorts.py`, and the `SaaShortsTab`/`UGCGallery` frontend were **removed** — do not re-add them. The app is **local-first**: the launcher binds `127.0.0.1` and CORS is locked to localhost; the API is unauthenticated and must not be exposed to a network.
 
 ## Development Commands
 
@@ -55,7 +57,9 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 | `s3_uploader.py` | AWS S3 upload with caching |
 | `subtitles.py` | SRT generation, FFmpeg subtitle burning, and dubbed video transcription |
 | `translate.py` | ElevenLabs dubbing API for AI voice translation |
+| `thumbnail.py` | Gemini YouTube title/description generation and AI thumbnail image generation (YouTube Studio) |
 | `dashboard/src/App.jsx` | Main React component with state management |
+| `dashboard/src/components/ThumbnailStudio.jsx` | YouTube Studio UI (titles, thumbnails, descriptions, publish) |
 | `dashboard/src/components/TranslateModal.jsx` | Voice dubbing UI with language selection |
 
 ### Dual-Mode Video Reframing
@@ -76,7 +80,10 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 | POST | `/api/hook` | Add text hook overlays |
 | POST | `/api/translate` | AI voice dubbing via ElevenLabs |
 | GET | `/api/translate/languages` | List supported dubbing languages |
+| POST | `/api/effects/generate` | Generate AI FFmpeg/Remotion effect config |
 | POST | `/api/social/post` | Post to social media (async upload) |
+| GET | `/api/social/user` | Fetch connected social profiles (Upload-Post proxy) |
+| POST | `/api/thumbnail/{upload,analyze,titles,generate,describe,publish}` | YouTube Studio: transcribe, suggest titles, generate thumbnails/descriptions, publish |
 
 ### Concurrency Model
 Async job queue with semaphore-based concurrency control. Configure via `MAX_CONCURRENT_JOBS` env var (default: 5). Jobs auto-cleanup after 1 hour.
@@ -84,16 +91,20 @@ Async job queue with semaphore-based concurrency control. Configure via `MAX_CON
 ## Environment Variables
 
 **Server-side (.env):**
-- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET` - For S3 backup
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET` - For S3 backup (optional)
 - `MAX_CONCURRENT_JOBS` - Concurrent processing limit (default: 5)
+- `GEMINI_MODEL` - Text/analysis model (default: `gemini-2.5-flash`)
+- `GEMINI_IMAGE_MODEL` - Thumbnail image model (default: `gemini-3.1-flash-image-preview`)
+- `DISABLE_YOUTUBE_URL` - Set `true` to allow file uploads only (no URL ingest)
+- `CORS_ALLOW_ORIGINS` - Comma-separated allowed origins (default: localhost dev ports)
 - `VITE_API_URL` - Production API URL override
 
-**Client-side (localStorage, encrypted):**
+**Client-side (localStorage):**
 - `GEMINI_API_KEY` - Google Gemini API key (required)
 - `ELEVENLABS_API_KEY` - ElevenLabs API key for voice dubbing (optional)
 - `UPLOAD_POST_API_KEY` - Upload-Post API key for social posting (optional)
 
-> API keys are stored encrypted in the browser and sent via headers only when needed. Never stored server-side.
+> API keys live only in the browser's localStorage (lightly obfuscated via XOR+base64 — **not** strong encryption) and are sent via request headers only when a feature needs them. Never stored server-side.
 
 ## Tech Stack
 - **Backend:** Python 3.11, FastAPI, google-genai, faster-whisper, ultralytics (YOLOv8), mediapipe, opencv-python, yt-dlp, FFmpeg, httpx
