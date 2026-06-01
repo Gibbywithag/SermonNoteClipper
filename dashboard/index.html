@@ -11,178 +11,36 @@
   <meta name="description" content="Turn your sermon recordings into powerful 45-60 second social media clips. AI-powered detection of Scripture moments, illustrations, and application points." />
   <meta name="keywords" content="sermon clip generator, church media, sermon highlights, Instagram Reels church, TikTok church clips, YouTube Shorts sermon, AI sermon editor" />
   <meta name="author" content="Sermon Note Clipper" />
-  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-  <link rel="canonical" href="https://openshorts.app" />
 
-  <!-- Open Graph / Facebook -->
+  <!-- Open Graph -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://openshorts.app" />
-  <meta property="og:title"
-    content="OpenShorts - Free Clip Generator & AI UGC Video Creator" />
-  <meta property="og:description"
-    content="3 free tools in 1: clip generator, AI UGC video creator with AI actors, and YouTube Studio. Turn videos into viral shorts or generate marketing videos for any business. Open source, self-hosted." />
-  <meta property="og:image" content="https://openshorts.app/og-image.png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta property="og:site_name" content="OpenShorts" />
+  <meta property="og:title" content="Sermon Note Clipper - AI Sermon Clip Generator" />
+  <meta property="og:description" content="Turn full sermon recordings into ready-to-post 45-60 second vertical clips for Instagram Reels, TikTok, and YouTube Shorts. Built for church media teams." />
+  <meta property="og:site_name" content="Sermon Note Clipper" />
   <meta property="og:locale" content="en_US" />
 
   <!-- Twitter Cards -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:url" content="https://openshorts.app" />
-  <meta name="twitter:title"
-    content="OpenShorts - Free Clip Generator & AI UGC Video Creator" />
-  <meta name="twitter:description"
-    content="3 free tools in 1: clip generator, AI UGC video creator with AI actors, and YouTube Studio. Open source, self-hosted, no watermarks." />
-  <meta name="twitter:image" content="https://openshorts.app/og-image.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Sermon Note Clipper - AI Sermon Clip Generator" />
+  <meta name="twitter:description" content="Turn full sermon recordings into ready-to-post vertical clips for Instagram Reels, TikTok, and YouTube Shorts." />
 
   <!-- JSON-LD Structured Data -->
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "WebPage",
-          "name": "OpenShorts - Free Open Source Clip Generator",
-          "description": "Free open source clip generator that turns your long-form videos into viral TikTok, Instagram Reels & YouTube Shorts automatically with AI-powered viral moment detection, smart cropping, and a free AI YouTube thumbnail studio.",
-          "url": "https://openshorts.app",
-          "datePublished": "2024-06-01",
-          "dateModified": "2026-03-20",
-          "inLanguage": "en-US",
-          "speakable": {
-            "@type": "SpeakableSpecification",
-            "cssSelector": ["h1", ".hero-description", ".faq-answer"]
-          }
-        },
-        {
-          "@type": "SoftwareApplication",
-          "name": "OpenShorts",
-          "alternateName": "OpenShorts Free Clip Generator",
-          "description": "Free open source AI clip generator. Transforms your long-form videos into viral-ready short clips for TikTok, Instagram Reels, and YouTube Shorts using Google Gemini AI. Includes free AI YouTube thumbnail generator, title suggestions, description writer, and direct YouTube publishing.",
-          "applicationCategory": "MultimediaApplication",
-          "operatingSystem": "Cross-platform (Docker)",
-          "url": "https://openshorts.app",
-          "downloadUrl": "https://github.com/mutonby/openshorts",
-          "softwareVersion": "2.0",
-          "screenshot": "https://openshorts.app/og-image.png",
-          "featureList": [
-            "Free AI clip generator with viral moment detection",
-            "Open source clip generator — self-hosted with Docker",
-            "AI viral moment detection with Google Gemini 3.0 Flash",
-            "Smart 9:16 vertical cropping with face tracking",
-            "Automatic subtitle generation with word-level timestamps",
-            "AI voice dubbing in 30+ languages via ElevenLabs",
-            "Local video file upload support",
-            "Hook text overlays with styled fonts",
-            "AI-generated video effects via FFmpeg",
-            "Direct social media posting",
-            "Free AI YouTube thumbnail generator",
-            "Free AI YouTube title generator with 10 viral suggestions",
-            "Free AI YouTube description generator with chapter timestamps",
-            "YouTube Studio: thumbnails, titles, descriptions & direct publishing — all free",
-            "AI UGC video creator with AI actors and lip-sync",
-            "Generate marketing videos for any business from $0.65",
-            "Shared AI avatar gallery",
-            "Public video gallery with SEO pages",
-            "S3 cloud backup",
-            "Self-hosted Docker deployment"
-          ],
-          "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD",
-            "availability": "https://schema.org/InStock"
-          },
-          "author": {
-            "@type": "Organization",
-            "name": "OpenShorts",
-            "url": "https://openshorts.app"
-          }
-        },
-        {
-          "@type": "FAQPage",
-          "mainEntity": [
-            {
-              "@type": "Question",
-              "name": "What is OpenShorts?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "OpenShorts is a free, open source AI clip generator that automatically transforms your long-form videos — podcasts, webinars, livestreams, vlogs, interviews — into viral-ready short clips (9:16 vertical format) for TikTok, Instagram Reels, and YouTube Shorts. It uses Google Gemini 3.0 Flash AI to detect the most engaging viral moments, then applies smart cropping with MediaPipe face tracking, automatic subtitles via faster-whisper, and optional AI voice dubbing in over 30 languages via ElevenLabs. According to HubSpot's 2025 State of Marketing report, short-form video delivers the highest ROI of any content format."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "How does OpenShorts detect viral moments in videos?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "OpenShorts uses a multi-step AI pipeline: first, it transcribes the video with word-level timestamps using faster-whisper. Then, PySceneDetect identifies scene boundaries. Finally, Google Gemini 3.0 Flash AI analyzes the transcript and scene data to identify the 3 to 15 most engaging moments (15-60 seconds each), scoring them for viral potential based on emotional impact, hook strength, and shareability."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Is OpenShorts really free? What's the catch?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "OpenShorts is 100% free and open source. You self-host it using Docker on your own machine or server. It uses three external APIs — all with free tiers. Google Gemini API (required) powers AI analysis, viral moment detection, and thumbnail generation — free tier includes 1,500 requests per day. ElevenLabs API (optional) enables AI voice dubbing in 30+ languages — free tier included. Upload-Post API (optional) allows direct publishing to YouTube, TikTok, and Instagram — also free tier. There are no watermarks, no usage limits, and no subscription fees."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "How does the AI vertical cropping work?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "OpenShorts offers two intelligent cropping modes. TRACK mode uses MediaPipe face detection with YOLOv8 fallback to follow a single subject with stabilized 'Heavy Tripod' camera movement, preventing jitter. GENERAL mode handles group shots and landscapes by creating a blurred background layout that preserves the full width. A SpeakerTracker prevents rapid switching between subjects for smooth, professional results."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Is there a free alternative to Opus Clip?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes. OpenShorts is a free, open source alternative to Opus Clip that you can self-host. Unlike Opus Clip's $15-228/month pricing, OpenShorts is completely free with no watermarks or usage limits. It offers comparable AI viral moment detection powered by Google Gemini, smart vertical cropping with face tracking, automatic subtitles, and AI voice dubbing — all running on your own infrastructure with full data privacy."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Can OpenShorts add subtitles and translate videos?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes. OpenShorts automatically generates subtitles using faster-whisper with word-level timestamps and burns them into the video using FFmpeg. For translation, it integrates with ElevenLabs AI dubbing to translate and dub video audio into over 30 languages, preserving the original speaker's voice characteristics. The dubbed video is automatically re-transcribed and subtitled in the new language."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Can OpenShorts generate YouTube thumbnails and titles for free?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes. OpenShorts includes a free AI YouTube thumbnail generator, a free AI YouTube title generator, and a free AI YouTube description generator — all powered by Google Gemini 3.0 Flash. Upload your video and the AI suggests 10 viral title options with an interactive refinement chat. Then it generates multiple thumbnail designs using AI image generation — upload a face photo and background for personalized results. The studio also auto-generates YouTube descriptions with chapter timestamps and lets you publish directly to YouTube. Everything is 100% free with the Gemini free tier."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "Is there a free open source clip generator?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes — OpenShorts is a 100% free, open source clip generator. Unlike paid clip generators like Opus Clip ($15-228/month) or Kapwing ($24-79/month), OpenShorts lets you generate unlimited clips with no watermarks, no usage limits, and no subscription fees. It also includes a free AI YouTube thumbnail generator, free AI YouTube title generator, and free AI YouTube description generator — features that other clip generators charge extra for. You self-host it with Docker on your own machine for full privacy and control."
-              }
-            }
-          ]
-        },
-        {
-          "@type": "Organization",
-          "name": "OpenShorts",
-          "url": "https://openshorts.app",
-          "logo": "https://openshorts.app/logo-openshorts.png",
-          "sameAs": [
-            "https://github.com/mutonby/openshorts"
-          ]
-        }
-      ]
+      "@type": "SoftwareApplication",
+      "name": "Sermon Note Clipper",
+      "description": "Self-hosted AI tool that turns full sermon recordings into 45-60 second vertical social-media clips, detecting Scripture references, illustrations, application points, emotional peaks, and memorable one-liners.",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "macOS, Cross-platform (Docker)",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock"
+      }
     }
-    </script>
-
-  <!-- Analytics -->
-  <script defer data-domain="openshorts.app" src="https://analytics.fotoexamen.com/js/script.js"></script>
+  </script>
 </head>
 
 <body>

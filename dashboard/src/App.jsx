@@ -725,7 +725,7 @@ function App() {
                       className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 hover:from-purple-500/30 hover:to-indigo-500/30 border border-purple-500/30 text-purple-300 hover:text-purple-200 rounded-full text-xs font-bold transition-all"
                     >
                       <Calendar size={14} />
-                      Programar Semana
+                      Schedule Week
                     </button>
                   )}
                 </h2>

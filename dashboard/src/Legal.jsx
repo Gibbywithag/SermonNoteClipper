@@ -1,8 +1,7 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 
-const LAST_UPDATED = '2026-05-06';
-const ISSUES_URL = 'https://github.com/mutonby/openshorts/issues';
+const LAST_UPDATED = '2026-06-01';
 
 function Section({ title, children }) {
     return (
@@ -32,22 +31,24 @@ export default function Legal() {
             </header>
 
             <main className="max-w-3xl mx-auto px-6 py-12">
-                <h1 className="text-3xl md:text-4xl font-bold mb-2">Terms & Privacy</h1>
+                <h1 className="text-3xl md:text-4xl font-bold mb-2">Terms &amp; Privacy</h1>
                 <p className="text-zinc-500 text-sm mb-10">Last updated: {LAST_UPDATED}</p>
 
                 <Section title="The short version">
                     <p>
-                        OpenShorts is a free, open-source AI clip generator. There are no accounts, no payments, and we
-                        do not persistently store the videos you upload or the clips we generate. By using the Service
-                        you agree to the points below.
+                        Sermon Note Clipper is a free, open-source tool that you run on your own computer or
+                        server. There are no accounts and no payments. Your videos are processed on the machine
+                        that runs this instance and are not sent to us — there is no "us" hosting a copy. By using
+                        this tool you agree to the points below.
                     </p>
                 </Section>
 
-                <Section title="Service is provided as-is">
+                <Section title="Provided as-is">
                     <p>
-                        The Service is offered for free, on a best-effort basis, with no warranties of any kind and no
-                        guarantee of uptime, accuracy, or fitness for any particular purpose. To the maximum extent
-                        permitted by law, we are not liable for any damages arising from your use of the Service.
+                        The software is provided free, on a best-effort basis, with no warranties of any kind and
+                        no guarantee of uptime, accuracy, or fitness for any particular purpose. To the maximum
+                        extent permitted by law, the authors and contributors are not liable for any damages
+                        arising from your use of the software.
                     </p>
                 </Section>
 
@@ -63,95 +64,61 @@ export default function Legal() {
                         <li>The content is not unlawful, defamatory, or otherwise prohibited.</li>
                     </ul>
                     <p>
-                        If you submit content you do not have rights to, that is your responsibility, not ours. You
-                        agree to indemnify OpenShorts and its contributors against any third-party claim arising from
-                        content you submitted.
+                        If you process content you do not have rights to, that is your responsibility. The authors
+                        and contributors are not responsible for how an instance is used.
                     </p>
                 </Section>
 
-                <Section title="What we keep, and for how long">
+                <Section title="What is stored, and where">
                     <ul className="list-disc pl-6 space-y-1">
                         <li>
-                            <strong className="text-white">Uploaded videos and generated clips:</strong> deleted with
-                            their job, typically within 1 hour. Not backed up off-server in our hosted deployment.
+                            <strong className="text-white">Uploaded videos and generated clips:</strong> stored only
+                            on the machine running this instance, in its <code className="text-zinc-200">uploads/</code> and{' '}
+                            <code className="text-zinc-200">output/</code> folders, and automatically deleted with their
+                            job (typically within 1 hour).
                         </li>
                         <li>
                             <strong className="text-white">Attestation record (IP, user-agent, timestamp, source):</strong>{' '}
-                            kept in memory with the job and discarded when the job is purged (≈1 hour). Used only to
-                            evidence the ownership confirmation in case of a takedown or dispute.
-                        </li>
-                        <li>
-                            <strong className="text-white">Standard server access logs:</strong> retained up to 30 days
-                            for debugging and abuse prevention.
+                            kept in memory with the job and discarded when the job is purged (≈1 hour). It only records
+                            the ownership confirmation in case of a dispute.
                         </li>
                         <li>
                             <strong className="text-white">API keys (Gemini, ElevenLabs, Upload-Post):</strong> stored
-                            encrypted in your browser's <code className="text-zinc-200">localStorage</code>. They are
-                            sent as request headers when a feature needs them, used to call the relevant third party,
-                            and never written to our database or disk.
+                            in your browser's <code className="text-zinc-200">localStorage</code> with light
+                            obfuscation (not strong encryption — anyone with access to your browser profile can read
+                            them). They are sent as request headers when a feature needs them, used to call the relevant
+                            third party, and never written to disk on the server.
                         </li>
                     </ul>
-                    <p>We do not sell, rent, or share your data with third parties for advertising or any unrelated purpose.</p>
+                    <p>
+                        Optional cloud backup (AWS S3) is only active if the operator configures it. When enabled,
+                        generated clips are copied to the operator's own S3 bucket.
+                    </p>
                 </Section>
 
                 <Section title="Third-party APIs">
                     <p>
-                        When you use a feature that requires it, OpenShorts forwards relevant data to the third-party
+                        When you use a feature that requires it, the tool forwards relevant data to the third-party
                         API for which you provided a key — Google Gemini (AI analysis), ElevenLabs (optional dubbing),
-                        Upload-Post (optional social posting). Those services have their own terms and privacy policies
-                        which apply in addition to this notice.
+                        Upload-Post (optional social posting). Those services have their own terms and privacy
+                        policies, which apply in addition to this notice.
                     </p>
                 </Section>
 
-                <Section title="Your rights (EU / EEA / UK)">
+                <Section title="Self-hosted by you">
                     <p>
-                        Under the GDPR / UK GDPR you have the right to access, rectify, erase, restrict, object to, or
-                        port your personal data. Because we do not hold accounts and job data is purged within an hour,
-                        most requests are auto-satisfied by the retention schedule. For anything else, file a request
-                        via{' '}
-                        <a className="text-primary underline" href={ISSUES_URL} target="_blank" rel="noopener noreferrer">
-                            GitHub Issues
-                        </a>
-                        . You may also lodge a complaint with your local supervisory authority (in Spain: AEPD,{' '}
-                        <a className="text-primary underline" href="https://www.aepd.es" target="_blank" rel="noopener noreferrer">
-                            aepd.es
-                        </a>
-                        ).
+                        Each instance of Sermon Note Clipper is operated by whoever runs it — typically you or your
+                        organization. Data handling, retention, security, and any legal obligations for the content
+                        you process are the responsibility of that operator. For questions about a specific instance,
+                        contact the administrator who runs it.
                     </p>
                 </Section>
 
-                <Section title="Copyright takedowns">
+                <Section title="Changes">
                     <p>
-                        If you believe content processed through the Service infringes your copyright, open an issue at{' '}
-                        <a className="text-primary underline" href={ISSUES_URL} target="_blank" rel="noopener noreferrer">
-                            {ISSUES_URL}
-                        </a>{' '}
-                        with: identification of the work, identification of the allegedly infringing material (job ID,
-                        URL, or sufficient detail to locate it), your contact information, and a statement that you are
-                        authorized to act on behalf of the rights holder. Note that uploaded content is typically
-                        deleted within 1 hour, so most takedowns are auto-resolved by retention.
+                        This notice may change between releases; the "Last updated" date above reflects the most
+                        recent revision in this copy of the software.
                     </p>
-                </Section>
-
-                <Section title="Self-hosted instances">
-                    <p>
-                        OpenShorts is open source and may be self-hosted. This notice applies only to the hosted
-                        version we operate. Self-hosted instances are operated by their respective administrators, and
-                        their data handling, retention, and policies are their responsibility, not ours.
-                    </p>
-                </Section>
-
-                <Section title="Changes & contact">
-                    <p>
-                        We may update this notice from time to time; the "Last updated" date above reflects the most
-                        recent revision. Continued use after a change constitutes acceptance. For any other question,
-                        please use{' '}
-                        <a className="text-primary underline" href={ISSUES_URL} target="_blank" rel="noopener noreferrer">
-                            GitHub Issues
-                        </a>
-                        .
-                    </p>
-                    <p>This notice is governed by the laws of Spain.</p>
                 </Section>
             </main>
         </div>
