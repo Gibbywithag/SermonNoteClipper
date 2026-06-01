@@ -6,6 +6,10 @@ from google import genai
 from google.genai import types
 from PIL import Image
 
+# Image-generation model. Overridable via env so it can track Gemini's
+# fast-moving image-preview model names without a code change.
+GEMINI_IMAGE_MODEL = os.environ.get("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image-preview")
+
 
 def analyze_video_for_titles(api_key, video_path, transcript=None):
     """
@@ -241,7 +245,7 @@ DESIGN REQUIREMENTS:
         print(f"🎨 [Thumbnail] Generating thumbnail {i + 1}/{count}...")
         try:
             response = client.models.generate_content(
-                model="gemini-3.1-flash-image-preview",
+                model=GEMINI_IMAGE_MODEL,
                 contents=prompt_parts,
                 config=types.GenerateContentConfig(
                     response_modalities=["TEXT", "IMAGE"],

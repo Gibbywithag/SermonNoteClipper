@@ -9,7 +9,10 @@ from google.genai import types
 class VideoEditor:
     def __init__(self, api_key):
         self.client = genai.Client(api_key=api_key)
-        self.model_name = "gemini-3-flash-preview" 
+        # Default to the model the core pipeline uses (confirmed valid). The
+        # previous hardcoded "gemini-3-flash-preview" was a preview ID that is
+        # retired once a GA release ships. Override with GEMINI_MODEL if needed.
+        self.model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
     def upload_video(self, video_path):
         """Uploads video to Gemini File API."""
