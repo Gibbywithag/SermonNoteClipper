@@ -80,6 +80,17 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, settings
 
   const [sessionRecovered, setSessionRecovered] = useState(false);
+  // False when the server holds a Gemini key (GEMINI_API_KEY in .env, typically
+  // with a gateway) — then the UI doesn't prompt for a key.
+  const [keyRequired, setKeyRequired] = useState(true);
+
+  // Ask the server whether a key is needed (or it already has one).
+  useEffect(() => {
+    fetch(getApiUrl('/api/config'))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((cfg) => { if (cfg && cfg.geminiKeyRequired === false) setKeyRequired(false); })
+      .catch(() => {});
+  }, []);
 
   // Session Recovery: Restore on mount
   useEffect(() => {
@@ -176,8 +187,8 @@ function App() {
 
 
   const handleProcess = async (data) => {
-    if (!apiKey) {
-      // No key yet — send them straight to Settings to add one.
+    // Only require a key in the browser if the server doesn't already hold one.
+    if (keyRequired && !apiKey) {
       setActiveTab('settings');
       return;
     }
@@ -188,7 +199,8 @@ function App() {
 
     try {
       let body;
-      const headers = { 'X-Gemini-Key': apiKey };
+      const headers = {};
+      if (apiKey) headers['X-Gemini-Key'] = apiKey; // else the server uses its own key
 
       if (data.type === 'url') {
         headers['Content-Type'] = 'application/json';
@@ -202,7 +214,7 @@ function App() {
 
       const res = await fetch(getApiUrl('/api/process'), {
         method: 'POST',
-        headers: data.type === 'url' ? headers : { 'X-Gemini-Key': apiKey },
+        headers,
         body
       });
 
@@ -301,7 +313,7 @@ function App() {
         </header>
 
         {/* Persistent Missing Keys Banner — visible on every screen */}
-        {!apiKey && activeTab !== 'settings' && (
+        {keyRequired && !apiKey && activeTab !== 'settings' && (
           <div className="mx-6 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between gap-4 shrink-0 animate-[fadeIn_0.3s_ease-out]">
             <div className="flex items-center gap-3 text-sm text-amber-900">
               <KeyRound size={16} className="shrink-0 text-amber-600" />

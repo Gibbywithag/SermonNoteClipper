@@ -363,7 +363,12 @@ async def run_job(job_id, job_data):
 
 @app.get("/api/config")
 async def get_config():
-    return {"youtubeUrlEnabled": not DISABLE_YOUTUBE_URL}
+    return {
+        "youtubeUrlEnabled": not DISABLE_YOUTUBE_URL,
+        # False when the server holds a key (GEMINI_API_KEY in .env, typically
+        # paired with a GEMINI_BASE_URL gateway) — the UI then won't prompt.
+        "geminiKeyRequired": not bool(os.environ.get("GEMINI_API_KEY")),
+    }
 
 @app.post("/api/process")
 async def process_endpoint(
@@ -372,9 +377,12 @@ async def process_endpoint(
     url: Optional[str] = Form(None),
     acknowledged: Optional[str] = Form(None)
 ):
-    api_key = request.headers.get("X-Gemini-Key")
+    # Use the browser-supplied key if present, otherwise fall back to a
+    # server-side key (set GEMINI_API_KEY in .env — e.g. with a gateway, so
+    # users never need their own key).
+    api_key = request.headers.get("X-Gemini-Key") or os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        raise HTTPException(status_code=400, detail="Missing X-Gemini-Key header")
+        raise HTTPException(status_code=400, detail="No Gemini API key. Add one in Settings, or set GEMINI_API_KEY on the server.")
 
     ack_flag = str(acknowledged).lower() in ("1", "true", "yes")
 
