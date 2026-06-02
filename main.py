@@ -17,6 +17,7 @@ import yt_dlp
 import mediapipe as mp
 # import whisper (replaced by faster_whisper inside function)
 from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 import json
 
@@ -831,10 +832,16 @@ def get_viral_clips(transcript_result, video_duration):
         return None
 
 
-    client = genai.Client(api_key=api_key)
-    
+    # Optional LLM gateway/proxy: point the Gemini SDK at GEMINI_BASE_URL
+    # (e.g. Cloudflare AI Gateway or LiteLLM) for logging / rate-limits / cost.
+    _base_url = os.environ.get("GEMINI_BASE_URL")
+    _http_opts = types.HttpOptions(base_url=_base_url) if _base_url else None
+    if _base_url:
+        print(f"🌐 Routing Gemini through gateway: {_base_url}")
+    client = genai.Client(api_key=api_key, http_options=_http_opts)
+
     # We use gemini-2.5-flash as requested.
-    model_name = 'gemini-2.5-flash' 
+    model_name = 'gemini-2.5-flash'
     
     print(f"🤖  Initializing Gemini with model: {model_name}")
 

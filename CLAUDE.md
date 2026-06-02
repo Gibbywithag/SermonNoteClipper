@@ -88,7 +88,7 @@ Async job queue with semaphore-based concurrency control. Configure via `MAX_CON
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET` - For S3 backup (optional)
 - `MAX_CONCURRENT_JOBS` - Concurrent processing limit (default: 5)
 - `GEMINI_MODEL` - Text/analysis model (default: `gemini-2.5-flash`)
-- `GEMINI_IMAGE_MODEL` - Thumbnail image model (default: `gemini-3.1-flash-image-preview`)
+- `GEMINI_BASE_URL` - Optional LLM gateway/proxy base URL (Cloudflare AI Gateway, LiteLLM, …). Threaded into every `genai.Client(http_options=HttpOptions(base_url=…))`. Default: Google direct.
 - `DISABLE_YOUTUBE_URL` - Set `true` to allow file uploads only (no URL ingest)
 - `CORS_ALLOW_ORIGINS` - Comma-separated allowed origins (default: localhost dev ports)
 - `VITE_API_URL` - Production API URL override

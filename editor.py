@@ -8,7 +8,11 @@ from google.genai import types
 
 class VideoEditor:
     def __init__(self, api_key):
-        self.client = genai.Client(api_key=api_key)
+        # Optional LLM gateway/proxy via GEMINI_BASE_URL (Cloudflare AI Gateway,
+        # LiteLLM, etc.) for logging / rate-limits / cost control.
+        _base_url = os.environ.get("GEMINI_BASE_URL")
+        _http_opts = types.HttpOptions(base_url=_base_url) if _base_url else None
+        self.client = genai.Client(api_key=api_key, http_options=_http_opts)
         # Default to the model the core pipeline uses (confirmed valid). The
         # previous hardcoded "gemini-3-flash-preview" was a preview ID that is
         # retired once a GA release ships. Override with GEMINI_MODEL if needed.
