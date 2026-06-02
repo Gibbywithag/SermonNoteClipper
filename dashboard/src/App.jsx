@@ -242,8 +242,8 @@ function App() {
   const Sidebar = () => (
     <div className="w-20 lg:w-64 bg-surface border-r border-line flex flex-col h-full shrink-0 transition-all duration-300">
       <div className="p-6 flex items-center gap-3">
-        <div className="w-9 h-9 bg-primary text-[#FBF8F4] rounded-xl flex items-center justify-center shrink-0 overflow-hidden text-lg">
-          ✂️
+        <div className="w-9 h-9 bg-primary text-[#FBF8F4] rounded-xl flex items-center justify-center shrink-0 font-display italic text-xl leading-none">
+          S
         </div>
         <span className="font-display italic font-semibold text-xl text-ink hidden lg:block tracking-tight">Sermon Clipper</span>
       </div>
@@ -425,46 +425,64 @@ function App() {
             <div className="h-full overflow-y-auto custom-scrollbar animate-[fadeIn_0.3s_ease-out]">
               <div className="max-w-3xl mx-auto px-6 py-12">
 
-                {status === 'processing' && (
-                  results?.clips?.length > 0 ? (
-                    // Clips are streaming in — show them as they finish.
-                    <>
-                      <div className="flex items-center justify-between mb-8">
-                        <h2 className="font-display italic text-3xl text-ink">Finding the moments…</h2>
-                        <span className="flex items-center gap-2 text-sm text-muted">
-                          <span className="w-4 h-4 rounded-full border-2 border-line border-t-primary animate-spin" />
-                          {results.clips.length} ready
-                        </span>
+                {status === 'processing' && (() => {
+                  const last = (logs.length ? logs[logs.length - 1] : '').toLowerCase();
+                  const clipCount = results?.clips?.length || 0;
+                  // Which step are we on? 0 transcribe · 1 find moments · 2 cut clips
+                  let stage = 0;
+                  if (clipCount > 0 || /clip|cut|reframe|scene|frame|processing video|merg|saved/.test(last)) stage = 2;
+                  else if (/analyz|gemini|viral|moment/.test(last)) stage = 1;
+                  const steps = ['Transcribing the sermon', 'Finding the best moments', 'Cutting & reframing clips'];
+                  return (
+                    <div className="space-y-10">
+                      <div className="text-center space-y-2 pt-4">
+                        <h2 className="font-display italic text-3xl text-ink">Working on your clips…</h2>
+                        <p className="text-muted text-sm">Usually 2–5 minutes. You can leave this open while it works.</p>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pb-12">
-                        {results.clips.map((clip, i) => (
-                          <ResultCard key={i} clip={clip} index={i} jobId={jobId} geminiApiKey={apiKey} elevenLabsKey={elevenLabsKey} />
-                        ))}
+
+                      {/* Step tracker */}
+                      <div className="max-w-md mx-auto space-y-2.5">
+                        {steps.map((label, i) => {
+                          const state = i < stage ? 'done' : i === stage ? 'active' : 'pending';
+                          return (
+                            <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${state === 'active' ? 'border-primary/30 bg-primary/5' : 'border-line bg-surface'}`}>
+                              <span className="w-6 h-6 shrink-0 flex items-center justify-center">
+                                {state === 'done'
+                                  ? <Check size={18} className="text-green-600" />
+                                  : state === 'active'
+                                    ? <span className="w-4 h-4 rounded-full border-2 border-line border-t-primary animate-spin" />
+                                    : <span className="w-2 h-2 rounded-full bg-line" />}
+                              </span>
+                              <span className={`text-sm ${state === 'pending' ? 'text-muted' : 'text-ink font-medium'}`}>{label}</span>
+                              {i === 2 && clipCount > 0 && (
+                                <span className="ml-auto text-xs text-muted">{clipCount} so far</span>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center text-center py-24 space-y-7">
-                      <div className="w-14 h-14 rounded-full border-2 border-line border-t-primary animate-spin" />
-                      <div className="space-y-3">
-                        <h2 className="font-display italic text-3xl text-ink">
-                          {(() => {
-                            const last = (logs.length ? logs[logs.length - 1] : '').toLowerCase();
-                            if (last.includes('transcrib')) return 'Transcribing the sermon…';
-                            if (last.includes('analyz') || last.includes('gemini') || last.includes('viral')) return 'Finding the best moments…';
-                            if (last.includes('clip') || last.includes('cut') || last.includes('reframe')) return 'Cutting the clips…';
-                            return 'Finding the moments…';
-                          })()}
-                        </h2>
-                        <p className="text-muted max-w-md mx-auto leading-relaxed">
-                          This usually takes 2–5 minutes — you can leave this open while it works.
-                        </p>
+
+                      {/* Clips streaming in as they're cut */}
+                      {clipCount > 0 && (
+                        <div>
+                          <div className="flex items-baseline justify-between mb-4">
+                            <h3 className="font-display italic text-2xl text-ink">Clips so far</h3>
+                            <span className="text-sm text-muted">{clipCount} ready</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            {results.clips.map((clip, i) => (
+                              <ResultCard key={i} clip={clip} index={i} jobId={jobId} geminiApiKey={apiKey} elevenLabsKey={elevenLabsKey} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="text-center pb-8">
+                        <button onClick={handleReset} className="text-sm text-muted hover:text-ink transition-colors">Cancel</button>
                       </div>
-                      <button onClick={handleReset} className="text-sm text-muted hover:text-ink transition-colors">
-                        Cancel
-                      </button>
                     </div>
-                  )
-                )}
+                  );
+                })()}
 
                 {status === 'error' && (
                   <div className="flex flex-col items-center text-center py-24 space-y-5">

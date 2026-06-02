@@ -22,7 +22,7 @@ export default function Landing({ onLaunchApp }) {
       <div className="max-w-2xl w-full text-center space-y-8">
         {/* Logo & Title */}
         <div className="space-y-4">
-          <div className="text-6xl mb-4">✂️</div>
+          <div className="w-16 h-16 rounded-2xl bg-primary text-[#FBF8F4] font-display italic text-4xl flex items-center justify-center mx-auto mb-4">S</div>
           <h1 className="font-display text-5xl text-ink tracking-tight">
             Sermon Note <em className="font-display italic text-accent">Clipper</em>
           </h1>
