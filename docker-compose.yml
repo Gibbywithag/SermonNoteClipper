@@ -1,42 +1,19 @@
 services:
-  backend:
+  app:
     build: .
-    container_name: openshorts-backend
+    container_name: sermon-clipper
     # Publish to localhost only — the API is unauthenticated and must not be
-    # reachable from the LAN. Use a reverse proxy with auth to expose it.
+    # reachable from the LAN.
     ports:
       - "127.0.0.1:8000:8000"
+    # Pulls GEMINI_API_KEY (server-side key → no per-user prompt), GEMINI_BASE_URL
+    # (gateway), AWS_*, etc. from your .env at runtime.
+    env_file:
+      - .env
     volumes:
-      - .:/app
-      - /app/__pycache__
-      - ./output:/app/output
+      - ./output:/app/output          # generated clips show up on the host
+      - model-cache:/root/.cache      # persist Whisper/HF model downloads between runs
     restart: unless-stopped
 
-  frontend:
-    build: ./dashboard
-    container_name: openshorts-frontend
-    ports:
-      - "127.0.0.1:5175:5173"
-    volumes:
-      - ./dashboard:/app
-      - /app/node_modules
-    restart: unless-stopped
-    depends_on:
-      - backend
-
-  renderer:
-    build:
-      context: .
-      dockerfile: render-service/Dockerfile
-    container_name: openshorts-renderer
-    ports:
-      - "127.0.0.1:3100:3100"
-    volumes:
-      - ./output:/output
-    environment:
-      - REMOTION_BUNDLE_PATH=/app/remotion
-      - OUTPUT_DIR=/output
-      - PORT=3100
-    restart: unless-stopped
-    depends_on:
-      - backend
+volumes:
+  model-cache:

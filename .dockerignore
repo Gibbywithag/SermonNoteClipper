@@ -43,6 +43,18 @@ Dockerfile
 docker-compose.yml
 .dockerignore
 
+# Secrets — passed at runtime via env_file, never baked into the image
+.env
+
+# Runtime / build output (not needed in the image)
+output/
+uploads/
+dashboard/dist
+electron/
+build/
+release/
+.playwright-mcp/
+
 # Docs
 README.md
 *.md
