@@ -1,0 +1,79 @@
+{
+  "name": "sermon-note-clipper-desktop",
+  "productName": "Sermon Note Clipper",
+  "version": "1.0.0",
+  "description": "AI sermon clip generator for church media teams — desktop app",
+  "author": "Sermon Note Clipper",
+  "license": "MIT",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "build:web": "cd dashboard && npm install && npm run build",
+    "start": "npm run build:web && electron .",
+    "electron": "electron .",
+    "dev": "concurrently -k -n web,electron -c blue,magenta \"cd dashboard && npm run dev\" \"wait-on http://localhost:5175 && cross-env SERMON_DEV_URL=http://localhost:5175 electron .\"",
+    "icon": "venv/bin/python build/make-icon.py",
+    "dist:mac": "npm run build:web && electron-builder --mac",
+    "pack": "npm run build:web && electron-builder --dir"
+  },
+  "build": {
+    "appId": "com.sermonnoteclipper.app",
+    "productName": "Sermon Note Clipper",
+    "copyright": "Copyright © Sermon Note Clipper",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "dashboard/dist/**/*",
+      "package.json"
+    ],
+    "//extraResources": "Bundling the Python backend (app.py, main.py, models, a relocatable Python) goes here when packaging a standalone .app — see ELECTRON.md.",
+    "mac": {
+      "category": "public.app-category.video",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "darkModeSupport": true
+    },
+    "dmg": {
+      "title": "Sermon Note Clipper",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3",
+    "cross-env": "^10.1.0",
+    "electron": "^42.3.2",
+    "electron-builder": "^26.8.1",
+    "wait-on": "^9.0.10"
+  }
+}

@@ -1662,3 +1662,18 @@ async def thumbnail_publish_status(publish_id: str):
         raise HTTPException(status_code=404, detail="Publish job not found")
     return publish_jobs[publish_id]
 
+
+# ---------------------------------------------------------------------------
+# Serve the built dashboard (for the Electron desktop app / single-port mode).
+# Mounted LAST so it can't shadow the /api, /videos, or /thumbnails routes.
+# In dev, the Vite server (port 5175) serves the UI instead and this is skipped
+# unless the production build exists. The dashboard uses hash routing, so a
+# plain static mount with html=True is sufficient (no SPA fallback needed).
+# ---------------------------------------------------------------------------
+_FRONTEND_DIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard", "dist")
+if os.path.isdir(_FRONTEND_DIST):
+    app.mount("/", StaticFiles(directory=_FRONTEND_DIST, html=True), name="frontend")
+    print(f"🖥️  Serving dashboard from {_FRONTEND_DIST}")
+else:
+    print("ℹ️  No built dashboard found (dashboard/dist) — run the Vite dev server for the UI.")
+

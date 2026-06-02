@@ -43,6 +43,12 @@ skills-lock.json
 # Node
 node_modules/
 
+# Electron build output
+release/
+out/
+*.icns
+backend/   # staged Python backend for packaging (generated)
+
 # Python virtual environments (also self-ignored via venv/.gitignore)
 venv/
 env/
