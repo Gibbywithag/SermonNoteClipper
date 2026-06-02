@@ -3,7 +3,6 @@ import { Upload, FileVideo, Sparkles, Youtube, Instagram, LogOut, ChevronDown, C
 import KeyInput from './components/KeyInput';
 import MediaInput from './components/MediaInput';
 import ResultCard from './components/ResultCard';
-import ProcessingAnimation from './components/ProcessingAnimation';
 // import Gallery from './components/Gallery';
 import { getApiUrl } from './config';
 
@@ -77,26 +76,10 @@ function App() {
   const [status, setStatus] = useState('idle'); // idle, processing, complete, error
   const [results, setResults] = useState(null);
   const [logs, setLogs] = useState([]);
-  const [logsVisible, setLogsVisible] = useState(true);
   const [processingMedia, setProcessingMedia] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, settings
 
   const [sessionRecovered, setSessionRecovered] = useState(false);
-
-  // Sync state for original video playback
-  const [syncedTime, setSyncedTime] = useState(0);
-  const [isSyncedPlaying, setIsSyncedPlaying] = useState(false);
-  const [syncTrigger, setSyncTrigger] = useState(0);
-
-  const handleClipPlay = (startTime) => {
-    setSyncedTime(startTime);
-    setIsSyncedPlaying(true);
-    setSyncTrigger(prev => prev + 1);
-  };
-
-  const handleClipPause = () => {
-    setIsSyncedPlaying(false);
-  };
 
   // Session Recovery: Restore on mount
   useEffect(() => {
@@ -448,120 +431,77 @@ function App() {
                 </div>
 
                 <MediaInput onProcess={handleProcess} isProcessing={status === 'processing'} />
-
-                <div className="flex items-center justify-center gap-8 text-muted text-sm">
-                  <span className="flex items-center gap-2"><Youtube size={16} /> YouTube</span>
-                  <span className="flex items-center gap-2"><Instagram size={16} /> Instagram</span>
-                  <span className="flex items-center gap-2"><TikTokIcon size={16} /> TikTok</span>
-                </div>
               </div>
             </div>
           )}
 
-          {/* View: Processing / Results (Split View) */}
+          {/* View: Processing / Results */}
           {activeTab === 'dashboard' && (status === 'processing' || status === 'complete' || status === 'error') && (
-            <div className="h-full flex flex-col md:flex-row animate-[fadeIn_0.3s_ease-out]">
+            <div className="h-full overflow-y-auto custom-scrollbar animate-[fadeIn_0.3s_ease-out]">
+              <div className="max-w-3xl mx-auto px-6 py-12">
 
-              {/* Left Panel: Preview & Status */}
-              <div className={`${status === 'complete' ? 'w-full md:w-[30%] lg:w-[25%]' : 'w-full md:w-[55%] lg:w-[60%]'} h-full flex flex-col border-r border-line bg-stone/40 p-6 overflow-y-auto custom-scrollbar transition-all duration-700 ease-in-out`}>
-                <div className="mb-6 flex items-center justify-between">
-                  <h2 className="font-display italic text-2xl flex items-center gap-2">
-                    <Activity className={`text-primary ${status === 'processing' ? 'animate-pulse' : ''}`} size={20} />
-                    Live Analysis
-                  </h2>
-                  <span className={`text-xs px-2 py-1 rounded-full border ${status === 'processing' ? 'bg-primary/10 border-primary/20 text-primary' :
-                    status === 'complete' ? 'bg-green-600/10 border-green-600/20 text-green-700' :
-                      'bg-red-600/10 border-red-600/20 text-red-700'
-                    }`}>
-                    {status.toUpperCase()}
-                  </span>
-                </div>
-
-                {/* Video Preview */}
-                {processingMedia && (
-                  <ProcessingAnimation
-                    media={processingMedia}
-                    isComplete={status === 'complete'}
-                    syncedTime={syncedTime}
-                    isSyncedPlaying={isSyncedPlaying}
-                    syncTrigger={syncTrigger}
-                  />
-                )}
-
-                {/* Logs Terminal — deliberately dark charcoal card on the cream page */}
-                <div className={`bg-ink rounded-xl border border-ink/10 overflow-hidden flex flex-col transition-all duration-500 ${status === 'complete' ? 'h-32 min-h-0 opacity-60 hover:opacity-100' : 'flex-1 min-h-[200px]'}`}>
-                  <div className="px-4 py-2 border-b border-white/10 flex items-center justify-between bg-white/5 shrink-0">
-                    <span className="text-xs font-mono text-stone flex items-center gap-2">
-                      <Terminal size={12} /> System Logs
-                    </span>
-                    <button onClick={() => setLogsVisible(!logsVisible)} className="text-line/60 hover:text-white transition-colors">
-                      {logsVisible ? <ChevronDown size={14} /> : <ChevronDown size={14} className="rotate-180" />}
+                {status === 'processing' && (
+                  <div className="flex flex-col items-center text-center py-24 space-y-7">
+                    <div className="w-14 h-14 rounded-full border-2 border-line border-t-primary animate-spin" />
+                    <div className="space-y-3">
+                      <h2 className="font-display italic text-3xl text-ink">Finding the moments…</h2>
+                      <p className="text-muted max-w-md mx-auto leading-relaxed">
+                        We're transcribing the sermon, finding the best moments, and cutting them to vertical. This usually takes 2–5 minutes.
+                      </p>
+                    </div>
+                    <button onClick={handleReset} className="text-sm text-muted hover:text-ink transition-colors">
+                      Cancel
                     </button>
                   </div>
-                  {logsVisible && (
-                    <div className="flex-1 p-4 overflow-y-auto font-mono text-xs space-y-1.5 custom-scrollbar text-stone">
-                      {logs.map((log, i) => (
-                        <div key={i} className={`flex gap-2 ${log.toLowerCase().includes('error') ? 'text-red-400' : 'text-stone'}`}>
-                          <span className="text-line/40 shrink-0">{new Date().toLocaleTimeString()}</span>
-                          <span>{log}</span>
-                        </div>
-                      ))}
-                      {status === 'processing' && (
-                        <div className="animate-pulse text-accent">_</div>
-                      )}
+                )}
+
+                {status === 'error' && (
+                  <div className="flex flex-col items-center text-center py-24 space-y-5">
+                    <h2 className="font-display italic text-3xl text-ink">That didn’t work</h2>
+                    <p className="text-muted max-w-md">
+                      {logs.length ? logs[logs.length - 1] : 'Something went wrong while processing the sermon.'}
+                    </p>
+                    <button onClick={handleReset} className="btn-primary">Try again</button>
+                  </div>
+                )}
+
+                {status === 'complete' && (
+                  <>
+                    <div className="flex items-center justify-between mb-8">
+                      <h2 className="font-display italic text-3xl text-ink">
+                        Your clips
+                        {results?.clips?.length > 0 && (
+                          <span className="text-muted text-base ml-3 not-italic">· {results.clips.length} ready</span>
+                        )}
+                      </h2>
+                      <button onClick={handleReset} className="text-sm text-muted hover:text-ink transition-colors flex items-center gap-1.5">
+                        <PlusCircle size={15} /> New sermon
+                      </button>
                     </div>
-                  )}
-                </div>
-              </div>
 
-              {/* Right Panel: Results Grid */}
-              <div className={`${status === 'complete' ? 'w-full md:w-[70%] lg:w-[75%]' : 'w-full md:w-[45%] lg:w-[40%]'} h-full flex flex-col bg-background p-6 transition-all duration-700 ease-in-out`}>
-                <h2 className="font-display italic text-2xl mb-6 flex items-center gap-2 shrink-0">
-                  <Sparkles className="text-accent" size={20} />
-                  Generated Shorts
-                  {results?.clips?.length > 0 && (
-                    <span className="text-xs bg-stone text-ink px-2 py-0.5 rounded-full ml-auto">
-                      {results.clips.length} Clips
-                    </span>
-                  )}
-                  {results?.cost_analysis && (
-                    <span className="text-xs bg-green-600/10 border border-green-600/20 text-green-700 px-2 py-0.5 rounded-full ml-2" title={`Input: ${results.cost_analysis.input_tokens} | Output: ${results.cost_analysis.output_tokens}`}>
-                      ${results.cost_analysis.total_cost.toFixed(5)}
-                    </span>
-                  )}
-                </h2>
-
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-1">
-                  {results && results.clips && results.clips.length > 0 ? (
-                    <div className={`grid gap-4 pb-10 ${status === 'complete' ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1'}`}>
-                      {results.clips.map((clip, i) => (
-                        <ResultCard
-                          key={i}
-                          clip={clip}
-                          index={i}
-                          jobId={jobId}
-                          geminiApiKey={apiKey}
-                          elevenLabsKey={elevenLabsKey}
-                          onPlay={(time) => handleClipPlay(time)}
-                          onPause={handleClipPause}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    status === 'processing' ? (
-                      <div className="h-full flex flex-col items-center justify-center text-muted space-y-4 opacity-70">
-                        <div className="w-12 h-12 rounded-full border-2 border-line border-t-primary animate-spin" />
-                        <p className="text-sm">Waiting for clips...</p>
+                    {results?.clips?.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pb-12">
+                        {results.clips.map((clip, i) => (
+                          <ResultCard
+                            key={i}
+                            clip={clip}
+                            index={i}
+                            jobId={jobId}
+                            geminiApiKey={apiKey}
+                            elevenLabsKey={elevenLabsKey}
+                          />
+                        ))}
                       </div>
-                    ) : status === 'error' ? (
-                      <div className="h-full flex flex-col items-center justify-center text-red-600 space-y-2">
-                        <p>Generation failed.</p>
+                    ) : (
+                      <div className="text-center py-20 space-y-5">
+                        <p className="text-muted">No clear moments were found in this one.</p>
+                        <button onClick={handleReset} className="btn-primary">Try another sermon</button>
                       </div>
-                    ) : null
-                  )}
-                </div>
-              </div>
+                    )}
+                  </>
+                )}
 
+              </div>
             </div>
           )}
 
