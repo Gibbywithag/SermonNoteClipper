@@ -12,6 +12,9 @@ function Root() {
   const resolveView = () => {
     const hash = window.location.hash;
     if (hash === '#legal') return 'legal';
+    // In the desktop (Electron) app, skip the marketing landing page and go
+    // straight to the tool. The web build still shows the landing.
+    if (typeof window !== 'undefined' && window.sermonDesktop && window.sermonDesktop.isDesktop) return 'app';
     if (hash === '#app' || localStorage.getItem('sermon_clipper_skip_landing') === '1') return 'app';
     return 'landing';
   };
