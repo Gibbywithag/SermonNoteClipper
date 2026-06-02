@@ -47,17 +47,17 @@ export default function HookModal({ isOpen, onClose, onGenerate, isProcessing, v
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
-            <div className="bg-[#121214] border border-white/10 p-6 rounded-2xl w-full max-w-4xl shadow-2xl relative flex flex-col md:flex-row gap-6 max-h-[90vh]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+            <div className="bg-surface border border-line p-6 rounded-2xl w-full max-w-4xl shadow-2xl relative flex flex-col md:flex-row gap-6 max-h-[90vh]">
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-zinc-500 hover:text-white z-10"
+                    className="absolute top-4 right-4 text-muted hover:text-ink z-10"
                 >
                     <X size={20} />
                 </button>
 
                 {/* Left: Preview */}
-                <div className="flex-1 flex flex-col items-center justify-center bg-black rounded-lg border border-white/5 overflow-hidden relative aspect-[9/16] max-h-[600px]">
+                <div className="flex-1 flex flex-col items-center justify-center bg-ink rounded-lg border border-line overflow-hidden relative aspect-[9/16] max-h-[600px]">
                     {useRemotionPreview ? (
                         <RemotionPreview
                             videoUrl={videoUrl}
@@ -91,26 +91,26 @@ export default function HookModal({ isOpen, onClose, onGenerate, isProcessing, v
 
                 {/* Right: Controls */}
                 <div className="w-full md:w-80 flex flex-col">
-                    <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                        <Sparkles className="text-yellow-400" /> Viral Hook
+                    <h3 className="font-display italic text-2xl text-ink mb-6 flex items-center gap-2">
+                        <Sparkles className="text-accent" /> Viral Hook
                     </h3>
 
                     <div className="space-y-6 flex-1 overflow-y-auto custom-scrollbar pr-2">
                         {/* Text Input */}
                         <div>
-                            <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3 block">Text</label>
+                            <label className="text-xs font-bold text-muted uppercase tracking-wider mb-3 block">Text</label>
                             <textarea
                                 value={text}
                                 onChange={(e) => setText(e.target.value)}
                                 rows={4}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white placeholder-zinc-600 focus:outline-none focus:border-yellow-500/50 resize-none font-serif"
+                                className="w-full bg-background border border-line rounded-xl p-3 text-ink placeholder-muted focus:outline-none focus:border-primary/50 resize-none font-serif"
                                 placeholder="Enter text that will stop the scroll..."
                             />
                         </div>
 
                         {/* Position Control */}
                         <div>
-                            <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <label className="text-xs font-bold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
                                 <MoveVertical size={12} /> Position
                             </label>
                             <div className="grid grid-cols-3 gap-2">
@@ -119,8 +119,8 @@ export default function HookModal({ isOpen, onClose, onGenerate, isProcessing, v
                                         key={pos}
                                         onClick={() => setPosition(pos)}
                                         className={`py-2 px-1 rounded-lg text-xs font-bold capitalize transition-all border ${position === pos
-                                            ? 'bg-white text-black border-white'
-                                            : 'bg-white/5 text-zinc-400 border-white/5 hover:bg-white/10'
+                                            ? 'bg-primary text-[#FBF8F4] border-primary'
+                                            : 'bg-stone text-muted border-line hover:bg-line/60'
                                             }`}
                                     >
                                         {pos}
@@ -131,7 +131,7 @@ export default function HookModal({ isOpen, onClose, onGenerate, isProcessing, v
 
                         {/* Size Control */}
                         <div>
-                            <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <label className="text-xs font-bold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
                                 <Maximize size={12} /> Size
                             </label>
                             <div className="grid grid-cols-3 gap-2">
@@ -140,8 +140,8 @@ export default function HookModal({ isOpen, onClose, onGenerate, isProcessing, v
                                         key={sz}
                                         onClick={() => setSize(sz)}
                                         className={`py-2 px-1 rounded-lg text-xs font-bold transition-all border ${size === sz
-                                            ? 'bg-white text-black border-white'
-                                            : 'bg-white/5 text-zinc-400 border-white/5 hover:bg-white/10'
+                                            ? 'bg-primary text-[#FBF8F4] border-primary'
+                                            : 'bg-stone text-muted border-line hover:bg-line/60'
                                             }`}
                                     >
                                         {sz === 'S' ? 'Small' : sz === 'M' ? 'Medium' : 'Large'}
@@ -152,7 +152,7 @@ export default function HookModal({ isOpen, onClose, onGenerate, isProcessing, v
 
                         {/* Entrance Animation (new) */}
                         <div>
-                            <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <label className="text-xs font-bold text-muted uppercase tracking-wider mb-3 flex items-center gap-2">
                                 <Zap size={12} /> Entrance
                             </label>
                             <div className="grid grid-cols-2 gap-2">
@@ -161,8 +161,8 @@ export default function HookModal({ isOpen, onClose, onGenerate, isProcessing, v
                                         key={opt.value}
                                         onClick={() => setEntranceAnimation(opt.value)}
                                         className={`py-2 px-1 rounded-lg text-xs font-bold transition-all border ${entranceAnimation === opt.value
-                                            ? 'bg-white text-black border-white'
-                                            : 'bg-white/5 text-zinc-400 border-white/5 hover:bg-white/10'
+                                            ? 'bg-primary text-[#FBF8F4] border-primary'
+                                            : 'bg-stone text-muted border-line hover:bg-line/60'
                                             }`}
                                     >
                                         {opt.label}
@@ -173,22 +173,22 @@ export default function HookModal({ isOpen, onClose, onGenerate, isProcessing, v
 
                         {/* Display Duration (new) */}
                         <div>
-                            <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2 block">Duration: {displayDuration}s</label>
+                            <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">Duration: {displayDuration}s</label>
                             <input
                                 type="range"
                                 min="2"
                                 max="15"
                                 value={displayDuration}
                                 onChange={(e) => setDisplayDuration(parseInt(e.target.value))}
-                                className="w-full accent-yellow-500"
+                                className="w-full accent-primary"
                             />
-                            <div className="flex justify-between text-[10px] text-zinc-500">
+                            <div className="flex justify-between text-[10px] text-muted">
                                 <span>2s</span>
                                 <span>15s</span>
                             </div>
                         </div>
 
-                        <div className="p-3 bg-white/5 rounded-lg border border-white/5 text-[11px] text-zinc-400">
+                        <div className="p-3 bg-stone rounded-lg border border-line text-[11px] text-muted">
                             <strong>Tip:</strong> Keep it short and punchy. Using "POV:" or specific questions works best for retention.
                         </div>
                     </div>
@@ -200,7 +200,7 @@ export default function HookModal({ isOpen, onClose, onGenerate, isProcessing, v
                             remotion: hookConfig,
                         })}
                         disabled={isProcessing || !text.trim()}
-                        className="w-full py-4 mt-4 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                        className="w-full py-4 mt-4 bg-primary hover:bg-[#2f2624] text-[#FBF8F4] font-bold rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                     >
                         {isProcessing ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
                         {isProcessing ? 'Generating...' : 'Add Hook'}

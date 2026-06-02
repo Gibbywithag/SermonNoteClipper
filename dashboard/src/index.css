@@ -1,27 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-background text-white antialiased;
+    @apply bg-background text-ink antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
 
+/* Elegant serif display type (Heights-style accent headlines) */
+.font-display {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
 .glass-panel {
-  @apply bg-surface/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl;
+  @apply bg-surface border border-line rounded-2xl;
+  box-shadow: 0 18px 44px -26px rgba(70, 57, 55, 0.28);
 }
 
 .input-field {
-  @apply w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-sm placeholder:text-zinc-500;
+  @apply w-full bg-background border border-line rounded-xl px-4 py-3 outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/30 transition-all text-sm text-ink placeholder:text-muted;
 }
 
 .btn-primary {
-  @apply bg-primary hover:bg-blue-600 text-white px-6 py-3 rounded-xl font-medium transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20;
+  @apply bg-primary hover:bg-[#2f2624] text-[#FBF8F4] px-6 py-3 rounded-xl font-medium transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  box-shadow: 0 10px 26px -14px rgba(70, 57, 55, 0.5);
 }
 
-/* Custom Scrollbar */
+/* Scrolling tagline marquee (Heights-style) */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.marquee {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee 32s linear infinite;
+}
+
+/* Custom Scrollbar (dark thumb on the light theme) */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -32,41 +51,23 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(70, 57, 55, 0.18);
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(70, 57, 55, 0.32);
 }
 
 /* Custom Animations */
 @keyframes scan {
-  0% {
-    top: 0%;
-    opacity: 0;
-  }
-
-  10% {
-    opacity: 1;
-  }
-
-  90% {
-    opacity: 1;
-  }
-
-  100% {
-    top: 100%;
-    opacity: 0;
-  }
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
 }
 
 @keyframes scan-overlay {
-  0% {
-    top: -20%;
-  }
-
-  100% {
-    top: 100%;
-  }
+  0% { top: -20%; }
+  100% { top: 100%; }
 }

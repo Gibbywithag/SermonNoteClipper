@@ -6,8 +6,8 @@ const LAST_UPDATED = '2026-06-01';
 function Section({ title, children }) {
     return (
         <section className="mb-7">
-            <h2 className="text-lg font-bold text-white mb-2">{title}</h2>
-            <div className="text-zinc-300 leading-relaxed space-y-2 text-sm">{children}</div>
+            <h2 className="text-lg font-bold text-ink mb-2">{title}</h2>
+            <div className="text-ink/80 leading-relaxed space-y-2 text-sm">{children}</div>
         </section>
     );
 }
@@ -18,12 +18,12 @@ export default function Legal() {
     };
 
     return (
-        <div className="min-h-screen bg-bg text-white">
-            <header className="border-b border-white/5 sticky top-0 bg-bg/95 backdrop-blur z-10">
+        <div className="min-h-screen bg-background text-ink">
+            <header className="border-b border-line sticky top-0 bg-background/95 backdrop-blur z-10">
                 <div className="max-w-3xl mx-auto px-6 py-4 flex items-center">
                     <button
                         onClick={handleBack}
-                        className="text-zinc-400 hover:text-white flex items-center gap-2 text-sm"
+                        className="text-muted hover:text-ink flex items-center gap-2 text-sm"
                     >
                         <ArrowLeft size={16} /> Back
                     </button>
@@ -31,8 +31,8 @@ export default function Legal() {
             </header>
 
             <main className="max-w-3xl mx-auto px-6 py-12">
-                <h1 className="text-3xl md:text-4xl font-bold mb-2">Terms &amp; Privacy</h1>
-                <p className="text-zinc-500 text-sm mb-10">Last updated: {LAST_UPDATED}</p>
+                <h1 className="font-display text-4xl md:text-5xl mb-2">Terms &amp; Privacy</h1>
+                <p className="text-muted text-sm mb-10">Last updated: {LAST_UPDATED}</p>
 
                 <Section title="The short version">
                     <p>
@@ -72,19 +72,19 @@ export default function Legal() {
                 <Section title="What is stored, and where">
                     <ul className="list-disc pl-6 space-y-1">
                         <li>
-                            <strong className="text-white">Uploaded videos and generated clips:</strong> stored only
-                            on the machine running this instance, in its <code className="text-zinc-200">uploads/</code> and{' '}
-                            <code className="text-zinc-200">output/</code> folders, and automatically deleted with their
+                            <strong className="text-ink">Uploaded videos and generated clips:</strong> stored only
+                            on the machine running this instance, in its <code className="text-ink bg-stone px-1 py-0.5 rounded">uploads/</code> and{' '}
+                            <code className="text-ink bg-stone px-1 py-0.5 rounded">output/</code> folders, and automatically deleted with their
                             job (typically within 1 hour).
                         </li>
                         <li>
-                            <strong className="text-white">Attestation record (IP, user-agent, timestamp, source):</strong>{' '}
+                            <strong className="text-ink">Attestation record (IP, user-agent, timestamp, source):</strong>{' '}
                             kept in memory with the job and discarded when the job is purged (≈1 hour). It only records
                             the ownership confirmation in case of a dispute.
                         </li>
                         <li>
-                            <strong className="text-white">API keys (Gemini, ElevenLabs):</strong> stored
-                            in your browser's <code className="text-zinc-200">localStorage</code> with light
+                            <strong className="text-ink">API keys (Gemini, ElevenLabs):</strong> stored
+                            in your browser's <code className="text-ink bg-stone px-1 py-0.5 rounded">localStorage</code> with light
                             obfuscation (not strong encryption — anyone with access to your browser profile can read
                             them). They are sent as request headers when a feature needs them, used to call the relevant
                             third party, and never written to disk on the server.

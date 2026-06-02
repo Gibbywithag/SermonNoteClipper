@@ -291,9 +291,9 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
     };
 
     return (
-        <div className="bg-surface border border-white/5 rounded-2xl overflow-hidden flex flex-col md:flex-row group hover:border-white/10 transition-all animate-[fadeIn_0.5s_ease-out] min-h-[300px] h-auto" style={{ animationDelay: `${index * 0.1}s` }}>
+        <div className="bg-surface border border-line rounded-2xl overflow-hidden flex flex-col md:flex-row group hover:border-primary/20 hover:shadow-[0_18px_44px_-26px_rgba(70,57,55,0.28)] transition-all animate-[fadeIn_0.5s_ease-out] min-h-[300px] h-auto" style={{ animationDelay: `${index * 0.1}s` }}>
             {/* Left: Video Preview (Responsive Width) */}
-            <div className="w-full md:w-[180px] lg:w-[200px] bg-black relative shrink-0 aspect-[9/16] md:aspect-auto group/video">
+            <div className="w-full md:w-[180px] lg:w-[200px] bg-ink relative shrink-0 aspect-[9/16] md:aspect-auto group/video">
                 <video
                     ref={videoRef}
                     src={currentVideoUrl}
@@ -321,47 +321,47 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                 {/* Auto Edit Overlay if Processing */}
                 {isEditing && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 p-4 text-center">
-                        <Loader2 size={32} className="text-primary animate-spin mb-3" />
+                        <Loader2 size={32} className="text-[#E7C9B8] animate-spin mb-3" />
                         <span className="text-xs font-bold text-white uppercase tracking-wider">AI Magic in Progress...</span>
-                        <span className="text-[10px] text-zinc-400 mt-1">Applying viral edits & zooms</span>
+                        <span className="text-[10px] text-white/70 mt-1">Applying viral edits & zooms</span>
                     </div>
                 )}
             </div>
 
             {/* Right: Content & Details */}
-            <div className="flex-1 p-4 md:p-5 flex flex-col bg-[#121214] overflow-hidden min-w-0">
+            <div className="flex-1 p-4 md:p-5 flex flex-col bg-surface overflow-hidden min-w-0">
                 <div className="mb-4">
-                    <h3 className="text-base font-bold text-white leading-tight line-clamp-2 mb-2 break-words" title={clip.video_title_for_youtube_short}>
+                    <h3 className="text-base font-bold text-ink leading-tight line-clamp-2 mb-2 break-words" title={clip.video_title_for_youtube_short}>
                         {clip.video_title_for_youtube_short || "Viral Clip Generated"}
                     </h3>
-                    <div className="flex flex-wrap gap-2 text-[10px] text-zinc-500 font-mono">
-                        <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/5 shrink-0">{Math.floor(clip.end - clip.start)}s</span>
-                        <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/5 shrink-0">#shorts</span>
-                        <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/5 shrink-0">#viral</span>
+                    <div className="flex flex-wrap gap-2 text-[10px] text-muted font-mono">
+                        <span className="bg-stone px-1.5 py-0.5 rounded border border-line shrink-0">{Math.floor(clip.end - clip.start)}s</span>
+                        <span className="bg-stone px-1.5 py-0.5 rounded border border-line shrink-0">#shorts</span>
+                        <span className="bg-stone px-1.5 py-0.5 rounded border border-line shrink-0">#viral</span>
                     </div>
                 </div>
 
                 {/* Scrollable Descriptions Area */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2 mb-4">
                     {/* YouTube */}
-                    <div className="bg-black/20 rounded-lg p-3 border border-white/5">
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-red-400 mb-1.5 uppercase tracking-wider">
+                    <div className="bg-stone rounded-lg p-3 border border-line">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-red-600 mb-1.5 uppercase tracking-wider">
                             <Youtube size={12} className="shrink-0" /> <span className="truncate">YouTube Title</span>
                         </div>
-                        <p className="text-xs text-zinc-300 select-all break-words">
+                        <p className="text-xs text-ink/80 select-all break-words">
                             {clip.video_title_for_youtube_short || "Viral Short Video"}
                         </p>
                     </div>
 
                     {/* TikTok / IG */}
-                    <div className="bg-black/20 rounded-lg p-3 border border-white/5">
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-400 mb-1.5 uppercase tracking-wider">
-                            <Video size={12} className="text-cyan-400 shrink-0" />
-                            <span className="text-zinc-500">/</span>
-                            <Instagram size={12} className="text-pink-400 shrink-0" />
+                    <div className="bg-stone rounded-lg p-3 border border-line">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wider">
+                            <Video size={12} className="text-cyan-600 shrink-0" />
+                            <span className="text-muted">/</span>
+                            <Instagram size={12} className="text-pink-500 shrink-0" />
                             <span className="truncate">Caption</span>
                         </div>
-                        <p className="text-xs text-zinc-300 line-clamp-3 hover:line-clamp-none transition-all cursor-pointer select-all break-words">
+                        <p className="text-xs text-ink/80 line-clamp-3 hover:line-clamp-none transition-all cursor-pointer select-all break-words">
                             {clip.video_description_for_tiktok || clip.video_description_for_instagram}
                         </p>
                     </div>
@@ -369,18 +369,18 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
 
                 {/* Error Message */}
                 {editError && (
-                    <div className="mb-3 p-2 bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] rounded-lg flex items-center gap-2">
+                    <div className="mb-3 p-2 bg-red-600/10 border border-red-600/20 text-red-700 text-[10px] rounded-lg flex items-center gap-2">
                         <AlertCircle size={12} className="shrink-0" />
                         {editError}
                     </div>
                 )}
 
                 {/* Actions Footer */}
-                <div className="grid grid-cols-2 gap-3 mt-auto pt-4 border-t border-white/5">
+                <div className="grid grid-cols-2 gap-3 mt-auto pt-4 border-t border-line">
                     <button
                         onClick={handleAutoEdit}
                         disabled={isEditing}
-                        className="col-span-1 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-purple-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1 truncate px-1"
+                        className="col-span-1 py-2 bg-primary hover:bg-[#2f2624] text-[#FBF8F4] rounded-lg text-xs font-bold shadow-md shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1 truncate px-1"
                     >
                         {isEditing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
                         {isEditing ? 'Editing...' : 'Auto Edit'}
@@ -389,7 +389,7 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                     <button
                         onClick={() => setShowSubtitleModal(true)}
                         disabled={isSubtitling}
-                        className="col-span-1 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-orange-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1 truncate px-1"
+                        className="col-span-1 py-2 bg-accent hover:bg-[#684c40] text-[#FBF8F4] rounded-lg text-xs font-bold shadow-md shadow-accent/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1 truncate px-1"
                     >
                         {isSubtitling ? <Loader2 size={14} className="animate-spin" /> : <Type size={14} />}
                         {isSubtitling ? 'Adding...' : 'Subtitles'}
@@ -398,7 +398,7 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                     <button
                         onClick={() => setShowHookModal(true)}
                         disabled={isHooking}
-                        className="col-span-1 py-2 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-black rounded-lg text-xs font-bold shadow-lg shadow-yellow-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1 truncate px-1"
+                        className="col-span-1 py-2 bg-accent hover:bg-[#684c40] text-[#FBF8F4] rounded-lg text-xs font-bold shadow-md shadow-accent/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1 truncate px-1"
                     >
                         {isHooking ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
                         {isHooking ? 'Adding...' : 'Viral Hook'}
@@ -407,7 +407,7 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                     <button
                         onClick={() => setShowTranslateModal(true)}
                         disabled={isTranslating}
-                        className="col-span-1 py-2 bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-400 hover:to-teal-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-green-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1 truncate px-1"
+                        className="col-span-1 py-2 bg-primary hover:bg-[#2f2624] text-[#FBF8F4] rounded-lg text-xs font-bold shadow-md shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1 truncate px-1"
                     >
                         {isTranslating ? <Loader2 size={14} className="animate-spin" /> : <Languages size={14} />}
                         {isTranslating ? 'Translating...' : 'Dub Voice'}
@@ -434,7 +434,7 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                                 window.open(currentVideoUrl, '_blank');
                             }
                         }}
-                        className="col-span-1 py-2 bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 border border-white/5 truncate px-2"
+                        className="col-span-1 py-2 bg-stone hover:bg-line/60 text-ink rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 border border-line truncate px-2"
                     >
                         <Download size={14} className="shrink-0" /> Download
                     </button>
