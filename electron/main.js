@@ -43,8 +43,10 @@ function createWindow() {
     height: 860,
     minWidth: 940,
     minHeight: 640,
-    backgroundColor: '#0c0c0e',
-    titleBarStyle: 'hiddenInset',
+    backgroundColor: '#FAF9F8',
+    // NOTE: a standard title bar (no 'hiddenInset') — hiddenInset turns the top
+    // of the window into a drag region, which can swallow clicks on UI near the
+    // top. Default title bar keeps the whole content area clickable.
     title: 'Sermon Note Clipper',
     show: false,
     webPreferences: {

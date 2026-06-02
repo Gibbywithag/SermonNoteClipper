@@ -177,7 +177,8 @@ function App() {
 
   const handleProcess = async (data) => {
     if (!apiKey) {
-      setShowKeyModal(true);
+      // No key yet — send them straight to Settings to add one.
+      setActiveTab('settings');
       return;
     }
     setStatus('processing');
