@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, FileVideo, Sparkles, Youtube, Instagram, Share2, LogOut, ChevronDown, Check, Activity, LayoutDashboard, Settings, PlusCircle, History, Menu, X, Terminal, Shield, LayoutGrid, Image, Globe, RotateCcw, Calendar, AlertTriangle, KeyRound, Bot, Users, Smartphone, ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
+import { Upload, FileVideo, Sparkles, Youtube, Instagram, LogOut, ChevronDown, Check, Activity, LayoutDashboard, Settings, PlusCircle, History, Menu, X, Terminal, Shield, LayoutGrid, Globe, RotateCcw, AlertTriangle, KeyRound, Bot, Users, Smartphone, ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
 import KeyInput from './components/KeyInput';
 import MediaInput from './components/MediaInput';
 import ResultCard from './components/ResultCard';
 import ProcessingAnimation from './components/ProcessingAnimation';
 // import Gallery from './components/Gallery';
-import ThumbnailStudio from './components/ThumbnailStudio';
-import ScheduleWeekModal from './components/ScheduleWeekModal';
 import { getApiUrl } from './config';
 
 // Enhanced "Encryption" using XOR + Base64 with a Salt
@@ -55,72 +53,6 @@ const TikTokIcon = ({ size = 16, className = "" }) => (
   </svg>
 );
 
-const UserProfileSelector = ({ profiles, selectedUserId, onSelect }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  if (!profiles || profiles.length === 0) return null;
-
-  const selectedProfile = profiles.find(p => p.username === selectedUserId) || profiles[0];
-
-  return (
-    <div className="relative z-50">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between bg-surface border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-white/5 transition-colors min-w-[180px]"
-      >
-        <span className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-[10px] font-bold text-white">
-            {selectedProfile?.username?.substring(0, 1).toUpperCase() || "U"}
-          </div>
-          <span className="font-medium text-white truncate max-w-[100px]">{selectedProfile?.username || "Select User"}</span>
-        </span>
-        <ChevronDown size={14} className={`text-zinc-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
-
-      {isOpen && (
-        <div className="absolute top-full mt-2 right-0 w-64 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
-          <div className="max-h-60 overflow-y-auto custom-scrollbar">
-            {profiles.map((profile) => (
-              <button
-                key={profile.username}
-                onClick={() => {
-                  onSelect(profile.username);
-                  setIsOpen(false);
-                }}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors text-left group border-b border-white/5 last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center text-xs font-bold text-white border border-white/10 shrink-0">
-                    {profile.username.substring(0, 2).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors truncate">
-                      {profile.username}
-                    </div>
-                    <div className="flex gap-2 mt-0.5">
-                      {/* Status indicators */}
-                      <div className={`flex items-center gap-1 text-[10px] ${profile.connected.includes('tiktok') ? 'text-zinc-300' : 'text-zinc-600'}`}>
-                        <TikTokIcon size={10} />
-                      </div>
-                      <div className={`flex items-center gap-1 text-[10px] ${profile.connected.includes('instagram') ? 'text-pink-400' : 'text-zinc-600'}`}>
-                        <Instagram size={10} />
-                      </div>
-                      <div className={`flex items-center gap-1 text-[10px] ${profile.connected.includes('youtube') ? 'text-red-400' : 'text-zinc-600'}`}>
-                        <Youtube size={10} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {selectedUserId === profile.username && <Check size={14} className="text-primary shrink-0" />}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const SESSION_KEY = 'sermon_clipper_session';
 const SESSION_MAX_AGE = 3600000; // 1 hour (matches server job retention)
 
@@ -133,12 +65,6 @@ const pollJob = async (jobId) => {
 
 function App() {
   const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_key') || '');
-  // Social API State - Load encrypted or plain
-  const [uploadPostKey, setUploadPostKey] = useState(() => {
-    const stored = localStorage.getItem('uploadPostKey_v3');
-    if (stored) return decrypt(stored);
-    return '';
-  });
   // ElevenLabs API State - Load encrypted
   const [elevenLabsKey, setElevenLabsKey] = useState(() => {
     const stored = localStorage.getItem('elevenLabsKey_v1');
@@ -146,8 +72,6 @@ function App() {
     return '';
   });
 
-  const [uploadUserId, setUploadUserId] = useState(() => localStorage.getItem('uploadUserId') || '');
-  const [userProfiles, setUserProfiles] = useState([]); // List of {username, connected: []}
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [jobId, setJobId] = useState(null);
   const [status, setStatus] = useState('idle'); // idle, processing, complete, error
@@ -158,7 +82,6 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, settings
 
   const [sessionRecovered, setSessionRecovered] = useState(false);
-  const [showScheduleWeek, setShowScheduleWeek] = useState(false);
 
   // Sync state for original video playback
   const [syncedTime, setSyncedTime] = useState(0);
@@ -228,29 +151,10 @@ function App() {
   }, [apiKey]);
 
   useEffect(() => {
-    if (uploadPostKey) {
-      localStorage.setItem('uploadPostKey_v3', encrypt(uploadPostKey));
-    }
-    if (uploadUserId) {
-      localStorage.setItem('uploadUserId', uploadUserId);
-    }
-  }, [uploadPostKey, uploadUserId]);
-
-  useEffect(() => {
     if (elevenLabsKey) {
       localStorage.setItem('elevenLabsKey_v1', encrypt(elevenLabsKey));
     }
   }, [elevenLabsKey]);
-
-  useEffect(() => {
-    if (uploadPostKey && userProfiles.length === 0) {
-      fetchUserProfiles();
-    }
-    // Fetch profiles once when the Upload-Post key becomes available. The
-    // length===0 guard already prevents re-fetching, so re-running on
-    // userProfiles/fetchUserProfiles changes would be redundant.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadPostKey]);
 
   useEffect(() => {
     let interval;
@@ -286,31 +190,8 @@ function App() {
   }, [status, jobId]);
 
 
-  const fetchUserProfiles = async () => {
-    if (!uploadPostKey) return;
-    try {
-      const res = await fetch(getApiUrl('/api/social/user'), {
-        headers: { 'X-Upload-Post-Key': uploadPostKey }
-      });
-      if (!res.ok) throw new Error("Failed to fetch");
-      const data = await res.json();
-      if (data.profiles && data.profiles.length > 0) {
-        setUserProfiles(data.profiles);
-        // Auto select first if none selected
-        if (!uploadUserId) {
-          setUploadUserId(data.profiles[0].username);
-        }
-      } else {
-        alert("No profiles found for this API Key.");
-      }
-    } catch (e) {
-      alert("Error fetching User Profiles. Please check key.");
-      console.error(e);
-    }
-  };
-
   const handleProcess = async (data) => {
-    if (!apiKey || !uploadPostKey) {
+    if (!apiKey) {
       setShowKeyModal(true);
       return;
     }
@@ -379,14 +260,6 @@ function App() {
         </button>
 
         <button
-          onClick={() => setActiveTab('thumbnails')}
-          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors ${activeTab === 'thumbnails' ? 'bg-primary/10 text-primary' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
-        >
-          <Image size={20} />
-          <span className="font-medium hidden lg:block">YouTube Studio</span>
-        </button>
-
-        <button
           onClick={() => setActiveTab('settings')}
           className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors ${activeTab === 'settings' ? 'bg-primary/10 text-primary' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
         >
@@ -439,44 +312,28 @@ function App() {
           </div>
 
           <div className="flex items-center gap-4">
-            {userProfiles.length > 0 && (
-              <UserProfileSelector
-                profiles={userProfiles}
-                selectedUserId={uploadUserId}
-                onSelect={setUploadUserId}
-              />
-            )}
-
-            {(!apiKey || !uploadPostKey) && (
+            {!apiKey && (
               <button
                 onClick={() => setActiveTab('settings')}
                 className="text-xs text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/30 transition-colors flex items-center gap-1.5"
                 title="Click to configure your API keys"
               >
                 <AlertTriangle size={12} />
-                {!apiKey && !uploadPostKey
-                  ? 'Gemini & Upload-Post keys missing'
-                  : !apiKey
-                    ? 'Gemini API Key Missing'
-                    : 'Upload-Post API Key Missing'}
+                Gemini API Key Missing
               </button>
             )}
           </div>
         </header>
 
         {/* Persistent Missing Keys Banner — visible on every screen */}
-        {(!apiKey || !uploadPostKey) && activeTab !== 'settings' && (
+        {!apiKey && activeTab !== 'settings' && (
           <div className="mx-6 mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between gap-4 shrink-0 animate-[fadeIn_0.3s_ease-out]">
             <div className="flex items-center gap-3 text-sm text-amber-200">
               <KeyRound size={16} className="shrink-0 text-amber-400" />
               <div>
-                <span className="font-semibold">Required API keys missing.</span>{' '}
+                <span className="font-semibold">Required API key missing.</span>{' '}
                 <span className="text-amber-200/80">
-                  {!apiKey && !uploadPostKey
-                    ? 'Set your Gemini and Upload-Post API keys to use Sermon Note Clipper.'
-                    : !apiKey
-                      ? 'Set your Gemini API key to use Sermon Note Clipper.'
-                      : 'Set your Upload-Post API key to use Sermon Note Clipper.'}
+                  Set your Gemini API key to use Sermon Note Clipper.
                 </span>
               </div>
             </div>
@@ -516,53 +373,6 @@ function App() {
                 </div>
               </div>
               <KeyInput onKeySet={setApiKey} savedKey={apiKey} />
-
-              <div className={`glass-panel p-6 mt-8 ${!uploadPostKey ? 'border-amber-500/30 ring-1 ring-amber-500/20' : ''}`}>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">Social Integration</h2>
-                  <span className="text-[10px] bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded text-amber-400 uppercase tracking-wider">Required</span>
-                </div>
-                <p className="text-xs text-zinc-500 mb-6 leading-relaxed">
-                  Required to publish your clips to TikTok, Instagram Reels, and YouTube Shorts via <strong>Upload-Post</strong>.
-                  Includes a <strong>free tier</strong> (no credit card required).
-                </p>
-                <div className="space-y-4">
-                  <label className="block text-sm text-zinc-400">Upload-Post API Key</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="password"
-                      value={uploadPostKey}
-                      onChange={(e) => setUploadPostKey(e.target.value)}
-                      className="input-field"
-                      placeholder="ey..."
-                    />
-                    <button onClick={fetchUserProfiles} className="btn-primary py-2 px-4 text-sm">
-                      Connect
-                    </button>
-                  </div>
-                  <p className="text-xs text-zinc-500 leading-relaxed">
-                    Connect your Upload-Post account to enable one-click publishing.
-                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <a href="https://app.upload-post.com/login" target="_blank" rel="noopener noreferrer" className="p-2 border border-white/5 rounded-lg hover:bg-white/5 transition-colors flex flex-col gap-1">
-                        <span className="text-zinc-400 font-medium">1. Login</span>
-                        <span className="text-[10px] text-zinc-600">Register account</span>
-                      </a>
-                      <a href="https://app.upload-post.com/manage-users" target="_blank" rel="noopener noreferrer" className="p-2 border border-white/5 rounded-lg hover:bg-white/5 transition-colors flex flex-col gap-1">
-                        <span className="text-zinc-400 font-medium">2. Profiles</span>
-                        <span className="text-[10px] text-zinc-600">Create & Connect</span>
-                      </a>
-                      <a href="https://app.upload-post.com/api-keys" target="_blank" rel="noopener noreferrer" className="p-2 border border-white/5 rounded-lg hover:bg-white/5 transition-colors flex flex-col gap-1">
-                        <span className="text-zinc-400 font-medium">3. API Key</span>
-                        <span className="text-[10px] text-zinc-600">Generate key</span>
-                      </a>
-                    </div>
-                    <br />
-                    <span className="text-zinc-600 italic">
-                      Keys are only stored in your browser. They are sent to the backend only to process your request, never stored server-side.
-                    </span>
-                  </p>
-                </div>
-              </div>
 
               <div className="glass-panel p-6 mt-8">
                 <div className="flex items-center justify-between mb-4">
@@ -616,11 +426,6 @@ function App() {
               </div>
 
             </div>
-          )}
-
-          {/* View: Thumbnails */}
-          {activeTab === 'thumbnails' && (
-            <ThumbnailStudio geminiApiKey={apiKey} uploadPostKey={uploadPostKey} uploadUserId={uploadUserId} />
           )}
 
           {/* View: Gallery */}
@@ -723,15 +528,6 @@ function App() {
                       ${results.cost_analysis.total_cost.toFixed(5)}
                     </span>
                   )}
-                  {results?.clips?.length > 1 && status === 'complete' && (
-                    <button
-                      onClick={() => setShowScheduleWeek(true)}
-                      className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 hover:from-purple-500/30 hover:to-indigo-500/30 border border-purple-500/30 text-purple-300 hover:text-purple-200 rounded-full text-xs font-bold transition-all"
-                    >
-                      <Calendar size={14} />
-                      Schedule Week
-                    </button>
-                  )}
                 </h2>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-1">
@@ -743,8 +539,6 @@ function App() {
                           clip={clip}
                           index={i}
                           jobId={jobId}
-                          uploadPostKey={uploadPostKey}
-                          uploadUserId={uploadUserId}
                           geminiApiKey={apiKey}
                           elevenLabsKey={elevenLabsKey}
                           onPlay={(time) => handleClipPlay(time)}
@@ -779,14 +573,10 @@ function App() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowKeyModal(false)}>
           <div className="bg-[#18181b] border border-white/10 rounded-2xl p-6 max-w-md w-full mx-4 space-y-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold text-white">
-              {!apiKey && !uploadPostKey
-                ? 'Required API Keys Missing'
-                : !apiKey
-                  ? 'Gemini API Key Required'
-                  : 'Upload-Post API Key Required'}
+              Gemini API Key Required
             </h2>
             <p className="text-sm text-zinc-400">
-              Sermon Note Clipper needs a <strong className="text-zinc-200">Gemini</strong> API key (free tier available). Upload-Post key is optional for direct social posting.
+              Sermon Note Clipper needs a <strong className="text-zinc-200">Gemini</strong> API key (free tier available).
             </p>
 
             {/* Gemini block */}
@@ -817,37 +607,6 @@ function App() {
               )}
             </div>
 
-            {/* Upload-Post block */}
-            <div className={`rounded-lg p-4 space-y-2 border ${!uploadPostKey ? 'bg-violet-500/5 border-violet-500/30' : 'bg-white/5 border-white/10 opacity-70'}`}>
-              <p className="text-xs font-semibold text-zinc-200 flex items-center gap-2">
-                {uploadPostKey ? <Check size={12} className="text-green-400" /> : <AlertTriangle size={12} className="text-amber-400" />}
-                Upload-Post API Key {uploadPostKey && <span className="text-green-400">— set</span>}
-              </p>
-              {!uploadPostKey && (
-                <>
-                  <p className="text-xs text-zinc-400">
-                    Required to publish your clips to TikTok, Instagram Reels, and YouTube Shorts. Free tier available, no credit card needed.
-                  </p>
-                  <ol className="text-xs text-zinc-400 space-y-1 list-decimal list-inside">
-                    <li>Register at <a href="https://app.upload-post.com/login" target="_blank" rel="noopener noreferrer" className="text-violet-400 underline">app.upload-post.com</a></li>
-                    <li>Connect your TikTok, Instagram, or YouTube accounts</li>
-                    <li>Go to <a href="https://app.upload-post.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-violet-400 underline">API Keys</a> and generate one</li>
-                    <li>Paste it below</li>
-                  </ol>
-                  <input
-                    type="text"
-                    placeholder="Paste your Upload-Post API key here..."
-                    className="w-full bg-black/50 border border-white/20 rounded-lg px-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && e.target.value.trim()) {
-                        setUploadPostKey(e.target.value.trim());
-                      }
-                    }}
-                  />
-                </>
-              )}
-            </div>
-
             <div className="flex gap-3">
               <button
                 onClick={() => setShowKeyModal(false)}
@@ -865,15 +624,6 @@ function App() {
           </div>
         </div>
       )}
-
-      <ScheduleWeekModal
-        isOpen={showScheduleWeek}
-        onClose={() => setShowScheduleWeek(false)}
-        clips={results?.clips || []}
-        jobId={jobId}
-        uploadPostKey={uploadPostKey}
-        uploadUserId={uploadUserId}
-      />
     </div>
   );
 }

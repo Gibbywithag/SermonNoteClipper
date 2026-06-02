@@ -83,7 +83,7 @@ export default function Legal() {
                             the ownership confirmation in case of a dispute.
                         </li>
                         <li>
-                            <strong className="text-white">API keys (Gemini, ElevenLabs, Upload-Post):</strong> stored
+                            <strong className="text-white">API keys (Gemini, ElevenLabs):</strong> stored
                             in your browser's <code className="text-zinc-200">localStorage</code> with light
                             obfuscation (not strong encryption — anyone with access to your browser profile can read
                             them). They are sent as request headers when a feature needs them, used to call the relevant
@@ -99,8 +99,8 @@ export default function Legal() {
                 <Section title="Third-party APIs">
                     <p>
                         When you use a feature that requires it, the tool forwards relevant data to the third-party
-                        API for which you provided a key — Google Gemini (AI analysis), ElevenLabs (optional dubbing),
-                        Upload-Post (optional social posting). Those services have their own terms and privacy
+                        API for which you provided a key — Google Gemini (AI analysis), ElevenLabs (optional dubbing).
+                        Those services have their own terms and privacy
                         policies, which apply in addition to this notice.
                     </p>
                 </Section>

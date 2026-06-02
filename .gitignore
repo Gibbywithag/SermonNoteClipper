@@ -62,3 +62,6 @@ env/
 # Memory (Claude Code per-project memory)
 memory/
 
+
+# Playwright MCP screenshot artifacts
+.playwright-mcp/

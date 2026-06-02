@@ -45,7 +45,6 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 8. **Hook Overlay** - Text overlays with styled fonts
 9. **Voice Dubbing** - Optional ElevenLabs AI translation (30+ languages)
 10. **S3 Backup** - Silent background upload
-11. **Social Distribution** - Upload-Post API (async upload)
 
 ### Key Files
 | File | Purpose |
@@ -57,9 +56,7 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 | `s3_uploader.py` | AWS S3 upload with caching |
 | `subtitles.py` | SRT generation, FFmpeg subtitle burning, and dubbed video transcription |
 | `translate.py` | ElevenLabs dubbing API for AI voice translation |
-| `thumbnail.py` | Gemini YouTube title/description generation and AI thumbnail image generation (YouTube Studio) |
 | `dashboard/src/App.jsx` | Main React component with state management |
-| `dashboard/src/components/ThumbnailStudio.jsx` | YouTube Studio UI (titles, thumbnails, descriptions, publish) |
 | `dashboard/src/components/TranslateModal.jsx` | Voice dubbing UI with language selection |
 
 ### Dual-Mode Video Reframing
@@ -81,9 +78,6 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 | POST | `/api/translate` | AI voice dubbing via ElevenLabs |
 | GET | `/api/translate/languages` | List supported dubbing languages |
 | POST | `/api/effects/generate` | Generate AI FFmpeg/Remotion effect config |
-| POST | `/api/social/post` | Post to social media (async upload) |
-| GET | `/api/social/user` | Fetch connected social profiles (Upload-Post proxy) |
-| POST | `/api/thumbnail/{upload,analyze,titles,generate,describe,publish}` | YouTube Studio: transcribe, suggest titles, generate thumbnails/descriptions, publish |
 
 ### Concurrency Model
 Async job queue with semaphore-based concurrency control. Configure via `MAX_CONCURRENT_JOBS` env var (default: 5). Jobs auto-cleanup after 1 hour.
@@ -102,12 +96,11 @@ Async job queue with semaphore-based concurrency control. Configure via `MAX_CON
 **Client-side (localStorage):**
 - `GEMINI_API_KEY` - Google Gemini API key (required)
 - `ELEVENLABS_API_KEY` - ElevenLabs API key for voice dubbing (optional)
-- `UPLOAD_POST_API_KEY` - Upload-Post API key for social posting (optional)
 
 > API keys live only in the browser's localStorage (lightly obfuscated via XOR+base64 — **not** strong encryption) and are sent via request headers only when a feature needs them. Never stored server-side.
 
 ## Tech Stack
 - **Backend:** Python 3.11, FastAPI, google-genai, faster-whisper, ultralytics (YOLOv8), mediapipe, opencv-python, yt-dlp, FFmpeg, httpx
 - **Frontend:** React 18, Vite 4, Tailwind CSS 3.4
-- **External APIs:** Google Gemini, ElevenLabs Dubbing, Upload-Post
+- **External APIs:** Google Gemini, ElevenLabs Dubbing
 - **Infrastructure:** Docker + Docker Compose, AWS S3

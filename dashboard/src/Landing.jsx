@@ -1,5 +1,5 @@
 import React from 'react';
-import { Scissors, Upload, Sparkles, Share2, ArrowRight } from 'lucide-react';
+import { Scissors, Upload, Sparkles, ArrowRight } from 'lucide-react';
 
 const StepCard = ({ number, icon: Icon, title, description }) => (
   <div className="flex gap-4 items-start">
@@ -49,14 +49,8 @@ export default function Landing({ onLaunchApp }) {
           <StepCard
             number="3"
             icon={Scissors}
-            title="Get ready-to-post clips"
-            description="Each clip is 45-60 seconds, vertical (9:16), with auto-generated subtitles and captions optimized for each platform."
-          />
-          <StepCard
-            number="4"
-            icon={Share2}
-            title="Post to social media"
-            description="Download clips or publish directly to Instagram, TikTok, and YouTube Shorts."
+            title="Download your clips"
+            description="Each clip is 45-60 seconds, vertical (9:16), with auto-generated subtitles and captions optimized for each platform — ready to download and post."
           />
         </div>
 
