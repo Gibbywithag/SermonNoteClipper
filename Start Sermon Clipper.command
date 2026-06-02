@@ -1,93 +1,80 @@
 #!/bin/bash
 # ============================================
-# Sermon Note Clipper - Start App
-# Double-click this file to launch
+# Sermon Note Clipper — Start
+# Double-click this file to launch the app (runs in Docker).
 # ============================================
 
 cd "$(dirname "$0")"
 clear
-
 echo "============================================"
 echo "  Starting Sermon Note Clipper..."
 echo "============================================"
 echo ""
 
-# Add Homebrew to path (Apple Silicon)
-if [ -f /opt/homebrew/bin/brew ]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-fi
+# A .env is required by docker-compose (it holds optional keys). Make sure one
+# exists so startup never fails on a fresh machine.
+[ -f .env ] || touch .env
 
-# Check if virtual environment exists
-if [ ! -d "venv" ]; then
-    echo "ERROR: Virtual environment not found."
-    echo "Please run 'install.command' first."
+# 1) Is Docker Desktop installed?
+if ! command -v docker >/dev/null 2>&1 && [ ! -d "/Applications/Docker.app" ]; then
+    echo "Docker Desktop isn't installed yet."
     echo ""
-    echo "Press any key to close..."
-    read -n 1
+    echo "It's a free, one-time install:"
+    echo "   https://www.docker.com/products/docker-desktop"
+    echo ""
+    echo "Install it, then double-click this file again."
+    echo ""
+    read -n 1 -s -r -p "Press any key to close..."
     exit 1
 fi
 
-# Activate virtual environment
-source venv/bin/activate
-
-# Check for FFmpeg
-if ! command -v ffmpeg &> /dev/null; then
-    echo "ERROR: FFmpeg not found. Please run 'install.command' first."
+# 2) Make sure Docker is running (start it if needed)
+if ! docker info >/dev/null 2>&1; then
+    echo "Starting Docker Desktop (this can take a minute the first time)..."
+    open -a Docker 2>/dev/null
+    printf "   waiting for Docker"
+    for i in $(seq 1 90); do
+        docker info >/dev/null 2>&1 && break
+        printf "."
+        sleep 2
+    done
     echo ""
-    echo "Press any key to close..."
-    read -n 1
+fi
+if ! docker info >/dev/null 2>&1; then
+    echo "Docker didn't start. Open Docker Desktop manually, then try again."
+    read -n 1 -s -r -p "Press any key to close..."
     exit 1
 fi
 
-# Create required directories
-mkdir -p uploads output
-
-# Cleanup function
-cleanup() {
+# 3) Build (first run only, several minutes) + start
+echo "Starting the app — the FIRST run builds it and can take several minutes."
+echo "(Later runs start in seconds.)"
+docker compose up -d --build || {
     echo ""
-    echo "Shutting down..."
-    kill $BACKEND_PID $FRONTEND_PID 2>/dev/null
-    exit 0
+    echo "Something went wrong starting the app. Logs:"
+    docker compose logs --tail=30
+    read -n 1 -s -r -p "Press any key to close..."
+    exit 1
 }
-trap cleanup EXIT INT TERM
 
-# Start the backend API server (FastAPI with uvicorn)
-# Bind to localhost only — this is a personal/local app and the API is
-# unauthenticated. Binding 0.0.0.0 would expose it to your whole network.
-echo "Starting backend server on port 8000..."
-uvicorn app:app --host 127.0.0.1 --port 8000 &
-BACKEND_PID=$!
-
-# Wait for backend to be ready
-sleep 2
-
-# Start the frontend dashboard
-echo "Starting web dashboard on port 5175..."
-cd dashboard
-npx vite --host &
-FRONTEND_PID=$!
-cd ..
-
-# Wait a moment for servers to start
-sleep 3
+# 4) Wait for it to answer, then open the browser
+printf "Getting it ready"
+for i in $(seq 1 120); do
+    curl -s http://127.0.0.1:8000/api/config >/dev/null 2>&1 && break
+    printf "."
+    sleep 1
+done
+echo ""
 
 echo ""
 echo "============================================"
 echo "  Sermon Note Clipper is running!"
 echo "============================================"
 echo ""
-echo "  Open in your browser:"
-echo "  http://localhost:5175"
+echo "  It just opened in your browser:"
+echo "     http://localhost:8000"
 echo ""
-echo "  First time? Go to Settings and paste"
-echo "  your Gemini API key."
-echo ""
-echo "  Close this window to stop the app."
+echo "  To stop it: double-click 'Stop Sermon Clipper.command'"
+echo "  (You can close this window — the app keeps running.)"
 echo "============================================"
-echo ""
-
-# Open browser automatically
-open "http://localhost:5175" 2>/dev/null
-
-# Keep running until window is closed
-wait
+open "http://localhost:8000" 2>/dev/null

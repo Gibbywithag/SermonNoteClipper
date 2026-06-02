@@ -9,7 +9,8 @@ services:
     # Pulls GEMINI_API_KEY (server-side key → no per-user prompt), GEMINI_BASE_URL
     # (gateway), AWS_*, etc. from your .env at runtime.
     env_file:
-      - .env
+      - path: .env
+        required: false
     volumes:
       - ./output:/app/output          # generated clips show up on the host
       - model-cache:/root/.cache      # persist Whisper/HF model downloads between runs
