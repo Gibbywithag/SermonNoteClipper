@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import uuid
 import socket
 import ipaddress
@@ -424,8 +425,9 @@ async def process_endpoint(
     job_output_dir = os.path.join(OUTPUT_DIR, job_id)
     os.makedirs(job_output_dir, exist_ok=True)
 
-    # Prepare Command
-    cmd = ["python", "-u", "main.py"] # -u for unbuffered
+    # Prepare Command — use the SAME interpreter running the backend (the venv
+    # python that has the deps), not a bare "python" that may not exist on PATH.
+    cmd = [sys.executable, "-u", "main.py"]  # -u for unbuffered
     env = os.environ.copy()
     env["GEMINI_API_KEY"] = api_key # Override with key from request
 
