@@ -337,11 +337,19 @@ async def run_job(job_id, job_data):
                 clips = data.get('shorts', [])
                 cost_analysis = data.get('cost_analysis')
 
+                # Only surface clips whose file actually exists. main.py skips
+                # clips with invalid AI timestamps or a failed reframe, leaving a
+                # metadata entry with no file behind it — otherwise the UI would
+                # render a 404 video for those indices.
+                ready_clips = []
                 for i, clip in enumerate(clips):
                      clip_filename = f"{base_name}_clip_{i+1}.mp4"
-                     clip['video_url'] = f"/videos/{job_id}/{clip_filename}"
-                
-                jobs[job_id]['result'] = {'clips': clips, 'cost_analysis': cost_analysis}
+                     clip_path = os.path.join(output_dir, clip_filename)
+                     if os.path.exists(clip_path) and os.path.getsize(clip_path) > 0:
+                         clip['video_url'] = f"/videos/{job_id}/{clip_filename}"
+                         ready_clips.append(clip)
+
+                jobs[job_id]['result'] = {'clips': ready_clips, 'cost_analysis': cost_analysis}
             else:
                  jobs[job_id]['status'] = 'failed'
                  jobs[job_id]['logs'].append("No metadata file generated.")
@@ -502,10 +510,13 @@ async def edit_clip(
             filename = safe_name
         else:
             # Fallback to original clip
-            clip = job['result']['clips'][req.clip_index]
+            clips = job['result']['clips']
+            if req.clip_index < 0 or req.clip_index >= len(clips):
+                raise HTTPException(status_code=404, detail="Clip index out of range")
+            clip = clips[req.clip_index]
             filename = clip['video_url'].split('/')[-1]
             input_path = os.path.join(OUTPUT_DIR, req.job_id, filename)
-        
+
         if not os.path.exists(input_path):
              raise HTTPException(status_code=404, detail=f"Video file not found: {input_path}")
 
@@ -715,7 +726,10 @@ async def generate_effects_config(
             safe_name = os.path.basename(req.input_filename)
             input_path = os.path.join(OUTPUT_DIR, req.job_id, safe_name)
         else:
-            clip = job['result']['clips'][req.clip_index]
+            clips = job['result']['clips']
+            if req.clip_index < 0 or req.clip_index >= len(clips):
+                raise HTTPException(status_code=404, detail="Clip index out of range")
+            clip = clips[req.clip_index]
             filename = clip['video_url'].split('/')[-1]
             input_path = os.path.join(OUTPUT_DIR, req.job_id, filename)
 

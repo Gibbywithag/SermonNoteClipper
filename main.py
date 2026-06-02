@@ -840,8 +840,8 @@ def get_viral_clips(transcript_result, video_duration):
         print(f"🌐 Routing Gemini through gateway: {_base_url}")
     client = genai.Client(api_key=api_key, http_options=_http_opts)
 
-    # We use gemini-2.5-flash as requested.
-    model_name = 'gemini-2.5-flash'
+    # Analysis model — honors GEMINI_MODEL (same knob editor.py uses).
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
     
     print(f"🤖  Initializing Gemini with model: {model_name}")
 

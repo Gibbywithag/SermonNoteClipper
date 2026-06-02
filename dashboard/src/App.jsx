@@ -140,35 +140,37 @@ function App() {
   }, [elevenLabsKey]);
 
   useEffect(() => {
-    let interval;
-    if ((status === 'processing' || status === 'completed') && jobId) {
-      interval = setInterval(async () => {
-        try {
-          const data = await pollJob(jobId);
-          console.log("Job status:", data);
+    if (status !== 'processing' || !jobId) return;
+    let failCount = 0;
+    const interval = setInterval(async () => {
+      try {
+        const data = await pollJob(jobId);
+        failCount = 0;
 
-          // Update results if available (real-time)
-          if (data.result) {
-            setResults(data.result);
-          }
+        // Stream partial clips in as they finish.
+        if (data.result) setResults(data.result);
 
-          if (data.status === 'completed') {
-            setStatus('complete');
-            clearInterval(interval);
-          } else if (data.status === 'failed') {
-            setStatus('error');
-            const errorMsg = data.error || (data.logs && data.logs.length > 0 ? data.logs[data.logs.length - 1] : "Process failed");
-            setLogs(prev => [...prev, "Error: " + errorMsg]);
-            clearInterval(interval);
-          } else {
-            // Update logs if available
-            if (data.logs) setLogs(data.logs);
-          }
-        } catch (e) {
-          console.error("Polling error", e);
+        if (data.status === 'completed') {
+          setStatus('complete');
+          clearInterval(interval);
+        } else if (data.status === 'failed') {
+          setStatus('error');
+          const errorMsg = data.error || (data.logs && data.logs.length > 0 ? data.logs[data.logs.length - 1] : "Process failed");
+          setLogs(prev => [...prev, "Error: " + errorMsg]);
+          clearInterval(interval);
+        } else if (data.logs) {
+          setLogs(data.logs);
         }
-      }, 2000);
-    }
+      } catch (e) {
+        // Job dropped / server restarted / 1-hour cleanup purged it — don't spin forever.
+        failCount += 1;
+        if (failCount >= 5) {
+          clearInterval(interval);
+          setStatus('error');
+          setLogs(prev => [...prev, "Lost connection to the job — it may have expired. Please try again."]);
+        }
+      }
+    }, 2000);
     return () => clearInterval(interval);
   }, [status, jobId]);
 
@@ -294,37 +296,24 @@ function App() {
             )}
           </div>
 
-          <div className="flex items-center gap-4">
-            {!apiKey && (
-              <button
-                onClick={() => setActiveTab('settings')}
-                className="text-xs text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/30 transition-colors flex items-center gap-1.5"
-                title="Click to configure your API keys"
-              >
-                <AlertTriangle size={12} />
-                Gemini API Key Missing
-              </button>
-            )}
-          </div>
+          <div className="flex items-center gap-4" />
         </header>
 
         {/* Persistent Missing Keys Banner — visible on every screen */}
         {!apiKey && activeTab !== 'settings' && (
-          <div className="mx-6 mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between gap-4 shrink-0 animate-[fadeIn_0.3s_ease-out]">
-            <div className="flex items-center gap-3 text-sm text-amber-200">
-              <KeyRound size={16} className="shrink-0 text-amber-400" />
+          <div className="mx-6 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between gap-4 shrink-0 animate-[fadeIn_0.3s_ease-out]">
+            <div className="flex items-center gap-3 text-sm text-amber-900">
+              <KeyRound size={16} className="shrink-0 text-amber-600" />
               <div>
-                <span className="font-semibold">Required API key missing.</span>{' '}
-                <span className="text-amber-200/80">
-                  Set your Gemini API key to use Sermon Note Clipper.
-                </span>
+                <span className="font-semibold">Add your Gemini API key to get started.</span>{' '}
+                <span className="text-amber-800">It’s free and takes a minute.</span>
               </div>
             </div>
             <button
               onClick={() => setActiveTab('settings')}
-              className="shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black transition-colors"
+              className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition-colors"
             >
-              Go to Settings
+              Add key
             </button>
           </div>
         )}
@@ -351,8 +340,8 @@ function App() {
             <div className="h-full overflow-y-auto p-8 max-w-2xl mx-auto animate-[fadeIn_0.3s_ease-out]">
               <div className="flex items-center justify-between mb-8">
                 <h1 className="text-2xl font-bold">Settings</h1>
-                <div className="px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full text-[10px] text-green-400 font-medium flex items-center gap-2">
-                  <Shield size={12} /> Privacy: keys only live in your browser (sent to backend just to process)
+                <div className="px-3 py-1 bg-green-50 border border-green-200 rounded-full text-[10px] text-green-700 font-medium flex items-center gap-2">
+                  <Shield size={12} /> Keys stay in your browser
                 </div>
               </div>
               <KeyInput onKeySet={setApiKey} savedKey={apiKey} />
@@ -388,7 +377,7 @@ function App() {
                       Save
                     </button>
                   </div>
-                  <p className="text-xs text-muted leading-relaxed">
+                  <div className="text-xs text-muted leading-relaxed">
                     Get your API key from ElevenLabs to enable video translation.
                     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <a href="https://elevenlabs.io/sign-up" target="_blank" rel="noopener noreferrer" className="p-2 border border-line rounded-lg hover:bg-stone transition-colors flex flex-col gap-1">
@@ -402,9 +391,9 @@ function App() {
                     </div>
                     <br />
                     <span className="text-muted italic">
-                      Keys are only stored in your browser. They are sent to the backend only to process your request, never stored server-side.
+                      Keys are only stored in your browser, and sent to the backend only to process your request.
                     </span>
-                  </p>
+                  </div>
                 </div>
               </div>
 
@@ -441,18 +430,44 @@ function App() {
               <div className="max-w-3xl mx-auto px-6 py-12">
 
                 {status === 'processing' && (
-                  <div className="flex flex-col items-center text-center py-24 space-y-7">
-                    <div className="w-14 h-14 rounded-full border-2 border-line border-t-primary animate-spin" />
-                    <div className="space-y-3">
-                      <h2 className="font-display italic text-3xl text-ink">Finding the moments…</h2>
-                      <p className="text-muted max-w-md mx-auto leading-relaxed">
-                        We're transcribing the sermon, finding the best moments, and cutting them to vertical. This usually takes 2–5 minutes.
-                      </p>
+                  results?.clips?.length > 0 ? (
+                    // Clips are streaming in — show them as they finish.
+                    <>
+                      <div className="flex items-center justify-between mb-8">
+                        <h2 className="font-display italic text-3xl text-ink">Finding the moments…</h2>
+                        <span className="flex items-center gap-2 text-sm text-muted">
+                          <span className="w-4 h-4 rounded-full border-2 border-line border-t-primary animate-spin" />
+                          {results.clips.length} ready
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pb-12">
+                        {results.clips.map((clip, i) => (
+                          <ResultCard key={i} clip={clip} index={i} jobId={jobId} geminiApiKey={apiKey} elevenLabsKey={elevenLabsKey} />
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center text-center py-24 space-y-7">
+                      <div className="w-14 h-14 rounded-full border-2 border-line border-t-primary animate-spin" />
+                      <div className="space-y-3">
+                        <h2 className="font-display italic text-3xl text-ink">
+                          {(() => {
+                            const last = (logs.length ? logs[logs.length - 1] : '').toLowerCase();
+                            if (last.includes('transcrib')) return 'Transcribing the sermon…';
+                            if (last.includes('analyz') || last.includes('gemini') || last.includes('viral')) return 'Finding the best moments…';
+                            if (last.includes('clip') || last.includes('cut') || last.includes('reframe')) return 'Cutting the clips…';
+                            return 'Finding the moments…';
+                          })()}
+                        </h2>
+                        <p className="text-muted max-w-md mx-auto leading-relaxed">
+                          This usually takes 2–5 minutes — you can leave this open while it works.
+                        </p>
+                      </div>
+                      <button onClick={handleReset} className="text-sm text-muted hover:text-ink transition-colors">
+                        Cancel
+                      </button>
                     </div>
-                    <button onClick={handleReset} className="text-sm text-muted hover:text-ink transition-colors">
-                      Cancel
-                    </button>
-                  </div>
+                  )
                 )}
 
                 {status === 'error' && (

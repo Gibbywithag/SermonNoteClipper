@@ -6,11 +6,15 @@ import HookModal from './HookModal';
 import TranslateModal from './TranslateModal';
 import { renderInBrowser } from '../lib/renderInBrowser';
 
-export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLabsKey, onPlay, onPause }) {
+export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLabsKey }) {
     const [showSubtitleModal, setShowSubtitleModal] = useState(false);
     const videoRef = React.useRef(null);
     const originalVideoUrl = getApiUrl(clip.video_url); // Never changes — used for Remotion previews
     const [currentVideoUrl, setCurrentVideoUrl] = useState(originalVideoUrl);
+
+    // Always holds the latest SERVER-RESIDENT clip filename (never a blob: segment).
+    // In-browser (Remotion) edits update the display URL only; server edits update this.
+    const [serverFilename, setServerFilename] = useState(() => clip.video_url.split('/').pop());
 
     const [isEditing, setIsEditing] = useState(false);
     const [isSubtitling, setIsSubtitling] = useState(false);
@@ -56,7 +60,7 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                 body: JSON.stringify({
                     job_id: jobId,
                     clip_index: index,
-                    input_filename: currentVideoUrl.split('/').pop()
+                    input_filename: serverFilename
                 })
             });
 
@@ -88,7 +92,7 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                 body: JSON.stringify({
                     job_id: jobId,
                     clip_index: index,
-                    input_filename: currentVideoUrl.split('/').pop()
+                    input_filename: serverFilename
                 })
             });
 
@@ -104,6 +108,8 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
 
             const data = await res.json();
             if (data.new_video_url) {
+                // Server produced a new server-resident file — track it for chaining.
+                setServerFilename(data.new_video_url.split('/').pop());
                 setCurrentVideoUrl(getApiUrl(data.new_video_url));
                 if (videoRef.current) {
                     videoRef.current.load();
@@ -154,13 +160,14 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                     border_width: options.borderWidth,
                     bg_color: options.bgColor,
                     bg_opacity: options.bgOpacity,
-                    input_filename: currentVideoUrl.split('/').pop()
+                    input_filename: serverFilename
                 })
             });
 
             if (!res.ok) throw new Error(await res.text());
             const data = await res.json();
             if (data.new_video_url) {
+                setServerFilename(data.new_video_url.split('/').pop());
                 setCurrentVideoUrl(getApiUrl(data.new_video_url));
                 if (videoRef.current) videoRef.current.load();
                 setShowSubtitleModal(false);
@@ -208,13 +215,14 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                     text: payload.text,
                     position: payload.position,
                     size: payload.size,
-                    input_filename: currentVideoUrl.split('/').pop()
+                    input_filename: serverFilename
                 })
             });
 
             if (!res.ok) throw new Error(await res.text());
             const data = await res.json();
             if (data.new_video_url) {
+                setServerFilename(data.new_video_url.split('/').pop());
                 setCurrentVideoUrl(getApiUrl(data.new_video_url));
                 if (videoRef.current) videoRef.current.load();
                 setShowHookModal(false);
@@ -243,7 +251,7 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                 job_id: jobId,
                 clip_index: index,
                 target_language: options.targetLanguage,
-                input_filename: currentVideoUrl.split('/').pop()
+                input_filename: serverFilename
             };
             console.log('[Translate] Request body:', requestBody);
             console.log('[Translate] Sending request to /api/translate');
@@ -274,6 +282,7 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
             const data = await res.json();
             console.log('[Translate] Success response:', data);
             if (data.new_video_url) {
+                setServerFilename(data.new_video_url.split('/').pop());
                 setCurrentVideoUrl(getApiUrl(data.new_video_url));
                 if (videoRef.current) {
                     videoRef.current.load();
@@ -300,11 +309,6 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                     controls
                     className="w-full h-full object-cover"
                     playsInline
-                    onPlay={() => {
-                        const currentTime = videoRef.current ? videoRef.current.currentTime : 0;
-                        onPlay && onPlay(clip.start + currentTime);
-                    }}
-                    onPause={() => onPause && onPause()}
                     onEnded={() => {
                         if (videoRef.current) {
                             videoRef.current.currentTime = 0;
@@ -376,43 +380,8 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                 )}
 
                 {/* Actions Footer */}
-                <div className="grid grid-cols-2 gap-3 mt-auto pt-4 border-t border-line">
-                    <button
-                        onClick={handleAutoEdit}
-                        disabled={isEditing}
-                        className="col-span-1 py-2 bg-primary hover:bg-[#2f2624] text-[#FBF8F4] rounded-lg text-xs font-bold shadow-md shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1 truncate px-1"
-                    >
-                        {isEditing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
-                        {isEditing ? 'Editing...' : 'Auto Edit'}
-                    </button>
-
-                    <button
-                        onClick={() => setShowSubtitleModal(true)}
-                        disabled={isSubtitling}
-                        className="col-span-1 py-2 bg-accent hover:bg-[#684c40] text-[#FBF8F4] rounded-lg text-xs font-bold shadow-md shadow-accent/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1 truncate px-1"
-                    >
-                        {isSubtitling ? <Loader2 size={14} className="animate-spin" /> : <Type size={14} />}
-                        {isSubtitling ? 'Adding...' : 'Subtitles'}
-                    </button>
-
-                    <button
-                        onClick={() => setShowHookModal(true)}
-                        disabled={isHooking}
-                        className="col-span-1 py-2 bg-accent hover:bg-[#684c40] text-[#FBF8F4] rounded-lg text-xs font-bold shadow-md shadow-accent/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1 truncate px-1"
-                    >
-                        {isHooking ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
-                        {isHooking ? 'Adding...' : 'Viral Hook'}
-                    </button>
-
-                    <button
-                        onClick={() => setShowTranslateModal(true)}
-                        disabled={isTranslating}
-                        className="col-span-1 py-2 bg-primary hover:bg-[#2f2624] text-[#FBF8F4] rounded-lg text-xs font-bold shadow-md shadow-primary/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mb-1 truncate px-1"
-                    >
-                        {isTranslating ? <Loader2 size={14} className="animate-spin" /> : <Languages size={14} />}
-                        {isTranslating ? 'Translating...' : 'Dub Voice'}
-                    </button>
-
+                <div className="mt-auto pt-4 border-t border-line space-y-3">
+                    {/* Primary action: Download */}
                     <button
                         onClick={async (e) => {
                             e.preventDefault();
@@ -434,10 +403,49 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                                 window.open(currentVideoUrl, '_blank');
                             }
                         }}
-                        className="col-span-1 py-2 bg-stone hover:bg-line/60 text-ink rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2 border border-line truncate px-2"
+                        className="btn-primary w-full !py-2.5 !rounded-lg text-sm flex items-center justify-center gap-2"
                     >
-                        <Download size={14} className="shrink-0" /> Download
+                        <Download size={16} className="shrink-0" /> Download Clip
                     </button>
+
+                    {/* Secondary "enhance" actions — subordinate ghost buttons */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <button
+                            onClick={handleAutoEdit}
+                            disabled={isEditing}
+                            className="py-1.5 bg-stone hover:bg-line/60 text-ink border border-line rounded-lg text-[11px] font-medium transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 truncate px-1.5"
+                        >
+                            {isEditing ? <Loader2 size={12} className="animate-spin shrink-0" /> : <Wand2 size={12} className="text-muted shrink-0" />}
+                            {isEditing ? 'Editing...' : 'Auto Edit'}
+                        </button>
+
+                        <button
+                            onClick={() => setShowSubtitleModal(true)}
+                            disabled={isSubtitling}
+                            className="py-1.5 bg-stone hover:bg-line/60 text-ink border border-line rounded-lg text-[11px] font-medium transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 truncate px-1.5"
+                        >
+                            {isSubtitling ? <Loader2 size={12} className="animate-spin shrink-0" /> : <Type size={12} className="text-muted shrink-0" />}
+                            {isSubtitling ? 'Adding...' : 'Subtitles'}
+                        </button>
+
+                        <button
+                            onClick={() => setShowHookModal(true)}
+                            disabled={isHooking}
+                            className="py-1.5 bg-stone hover:bg-line/60 text-ink border border-line rounded-lg text-[11px] font-medium transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 truncate px-1.5"
+                        >
+                            {isHooking ? <Loader2 size={12} className="animate-spin shrink-0" /> : <Wand2 size={12} className="text-muted shrink-0" />}
+                            {isHooking ? 'Adding...' : 'Viral Hook'}
+                        </button>
+
+                        <button
+                            onClick={() => setShowTranslateModal(true)}
+                            disabled={isTranslating}
+                            className="py-1.5 bg-stone hover:bg-line/60 text-ink border border-line rounded-lg text-[11px] font-medium transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 truncate px-1.5"
+                        >
+                            {isTranslating ? <Loader2 size={12} className="animate-spin shrink-0" /> : <Languages size={12} className="text-muted shrink-0" />}
+                            {isTranslating ? 'Translating...' : 'Dub Voice'}
+                        </button>
+                    </div>
                 </div>
             </div>
 
