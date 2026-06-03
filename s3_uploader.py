@@ -13,6 +13,13 @@ logging.getLogger('s3transfer').setLevel(logging.CRITICAL)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+
+def _safe_key_part(p):
+    """Sanitize a single S3 key component. Returns None if unsafe (empty or path traversal)."""
+    p = os.path.basename(str(p))
+    return p if p and ".." not in p else None
+
+
 def upload_file_to_s3(file_path, bucket_name, s3_key):
     """
     Upload a file to an S3 bucket silently.
@@ -45,11 +52,9 @@ from botocore.config import Config
 import json
 import time as time_module
 
-# Simple in-memory cache for gallery clips
-_clips_cache = {
-    "data": None,
-    "timestamp": 0
-}
+# Simple in-memory cache for gallery clips, keyed by bucket name so one
+# bucket's cached results can't be returned for a different bucket.
+_clips_cache = {}
 CACHE_TTL_SECONDS = 300  # 5 minutes
 
 def get_s3_client():
@@ -95,16 +100,21 @@ def list_all_clips(bucket_name=None, limit=50, force_refresh=False):
         force_refresh: If True, bypass cache
     """
     global _clips_cache
-    
-    # Check cache first
-    now = time_module.time()
-    if not force_refresh and _clips_cache["data"] is not None:
-        if now - _clips_cache["timestamp"] < CACHE_TTL_SECONDS:
-            cached = _clips_cache["data"]
-            return cached[:limit] if limit else cached
-    
+
     if not bucket_name:
-        bucket_name = os.environ.get('AWS_S3_BUCKET', 'my-clips-bucket')
+        bucket_name = os.environ.get('AWS_S3_BUCKET')
+
+    if not bucket_name:
+        logger.info("S3 backup skipped: AWS_S3_BUCKET not set")
+        return []
+
+    # Check cache first (keyed by bucket name)
+    now = time_module.time()
+    bucket_cache = _clips_cache.get(bucket_name)
+    if not force_refresh and bucket_cache is not None and bucket_cache["data"] is not None:
+        if now - bucket_cache["timestamp"] < CACHE_TTL_SECONDS:
+            cached = bucket_cache["data"]
+            return cached[:limit] if limit else cached
 
     s3_client = get_s3_client()
     if not s3_client:
@@ -151,8 +161,12 @@ def list_all_clips(bucket_name=None, limit=50, force_refresh=False):
                 
                 for i, clip in enumerate(clips_data):
                     clip_filename = f"{base_name}_clip_{i+1}.mp4"
-                    clip_key = f"{job_id}/{clip_filename}"
-                    
+                    safe_job_id = _safe_key_part(job_id)
+                    safe_clip_filename = _safe_key_part(clip_filename)
+                    if not safe_job_id or not safe_clip_filename:
+                        continue
+                    clip_key = f"{safe_job_id}/{safe_clip_filename}"
+
                     # Generate signed URL
                     signed_url = generate_presigned_url(bucket_name, clip_key, expiration=7200) # 2 hours
                     
@@ -185,8 +199,7 @@ def list_all_clips(bucket_name=None, limit=50, force_refresh=False):
         return []
     
     # Update cache with full results (keep for pagination later)
-    _clips_cache["data"] = all_clips
-    _clips_cache["timestamp"] = now
+    _clips_cache[bucket_name] = {"data": all_clips, "timestamp": now}
 
     return all_clips[:limit] if limit else all_clips
 
@@ -195,8 +208,12 @@ def upload_job_artifacts(directory, job_id):
     """
     Upload all generated clips and metadata for a job to S3.
     """
-    bucket_name = os.environ.get('AWS_S3_BUCKET', 'my-clips-bucket')
-    
+    bucket_name = os.environ.get('AWS_S3_BUCKET')
+
+    if not bucket_name:
+        logger.info("S3 backup skipped: AWS_S3_BUCKET not set")
+        return
+
     if not os.path.exists(directory):
         return
 
@@ -204,7 +221,11 @@ def upload_job_artifacts(directory, job_id):
         # Upload .mp4 clips and the metadata JSON
         if (filename.endswith(".mp4") or filename.endswith(".json")) and not filename.startswith("temp_"):
             file_path = os.path.join(directory, filename)
-            s3_key = f"{job_id}/{filename}"
+            safe_job_id = _safe_key_part(job_id)
+            safe_filename = _safe_key_part(filename)
+            if not safe_job_id or not safe_filename:
+                continue
+            s3_key = f"{safe_job_id}/{safe_filename}"
             upload_file_to_s3(file_path, bucket_name, s3_key)
 
 

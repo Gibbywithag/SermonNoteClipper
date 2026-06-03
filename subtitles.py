@@ -13,12 +13,16 @@ def transcribe_audio(video_path):
 
     # Use all CPU cores for speed. Keep the multilingual "base" model here because
     # this path also transcribes DUBBED (non-English) audio for subtitles.
-    cpu_threads = int(os.environ.get("WHISPER_THREADS", str(os.cpu_count() or 8)))
+    try:
+        cpu_threads = int(os.environ.get("WHISPER_THREADS") or (os.cpu_count() or 8))
+    except (TypeError, ValueError):
+        cpu_threads = os.cpu_count() or 8
+    cpu_threads = max(1, min(cpu_threads, 64))
     model = WhisperModel("base", device="cpu", compute_type="int8", cpu_threads=cpu_threads)
 
     # vad_filter off — Silero VAD via onnxruntime is extremely slow on this ARM64
     # container (see main.py). Set WHISPER_VAD=1 to re-enable where it's fast.
-    use_vad = os.environ.get("WHISPER_VAD", "0") == "1"
+    use_vad = os.environ.get("WHISPER_VAD", "0").lower() in ("1", "true", "yes")
     segments, info = model.transcribe(video_path, word_timestamps=True, beam_size=1, vad_filter=use_vad)
 
     transcript = {
@@ -74,8 +78,13 @@ def generate_srt(transcript, clip_start, clip_end, output_path, max_chars=20, ma
     # 1. Extract and flatten words within range
     for segment in transcript.get('segments', []):
         for word_info in segment.get('words', []):
+            # Skip words with missing/None timestamps (faster-whisper emits these).
+            w_start = word_info.get('start')
+            w_end = word_info.get('end')
+            if w_start is None or w_end is None:
+                continue
             # Check overlap
-            if word_info['end'] > clip_start and word_info['start'] < clip_end:
+            if w_end > clip_start and w_start < clip_end:
                 words.append(word_info)
     
     if not words:
@@ -106,8 +115,8 @@ def generate_srt(transcript, clip_start, clip_end, output_path, max_chars=20, ma
                 # Finalize current block
                 # End time of block is start of this word (gap) or end of last word?
                 # Usually end of last word.
-                block_end = current_block[-1]['end'] - clip_start
-                
+                block_end = max(0, current_block[-1]['end'] - clip_start)
+
                 text = " ".join([w['word'] for w in current_block]).strip()
                 srt_content += format_srt_block(index, block_start, block_end, text)
                 index += 1
@@ -119,7 +128,7 @@ def generate_srt(transcript, clip_start, clip_end, output_path, max_chars=20, ma
     
     # Final block
     if current_block:
-        block_end = current_block[-1]['end'] - clip_start
+        block_end = max(0, current_block[-1]['end'] - clip_start)
         text = " ".join([w['word'] for w in current_block]).strip()
         srt_content += format_srt_block(index, block_start, block_end, text)
         
@@ -140,12 +149,19 @@ def format_srt_block(index, start, end, text):
 
 def hex_to_ass_color(hex_color, opacity=1.0):
     """Convert #RRGGBB to ASS &HAABBGGRR format. opacity: 0.0=transparent, 1.0=opaque"""
-    hex_color = hex_color.lstrip('#')
+    hex_color = str(hex_color).lstrip('#')
     if len(hex_color) != 6:
         hex_color = "FFFFFF"
-    r = int(hex_color[0:2], 16)
-    g = int(hex_color[2:4], 16)
-    b = int(hex_color[4:6], 16)
+    try:
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+    except ValueError:
+        r = g = b = 255
+    try:
+        opacity = min(1.0, max(0.0, float(opacity)))
+    except (TypeError, ValueError):
+        opacity = 1.0
     alpha = round((1.0 - opacity) * 255)
     return f"&H{alpha:02X}{b:02X}{g:02X}{r:02X}"
 
@@ -176,8 +192,15 @@ def burn_subtitles(video_path, srt_path, output_path, alignment=2, fontsize=16,
     if final_fontsize < 10:
         final_fontsize = 10
 
-    # Path handling for FFmpeg filter syntax
-    safe_srt_path = srt_path.replace('\\', '/').replace(':', '\\:')
+    # Path handling for FFmpeg filter syntax. Escape backslashes, the ':' option
+    # separator, AND single quotes (which would otherwise close subtitles='...'
+    # and let the rest of the path inject extra filtergraph syntax).
+    safe_srt_path = srt_path.replace('\\', '/').replace("'", r"\'").replace(':', '\\:')
+
+    # The user-supplied font name is interpolated into the ffmpeg force_style
+    # argument; a stray quote/comma could inject extra style tokens, so restrict
+    # it to a safe charset.
+    safe_font_name = "".join(c for c in str(font_name) if c.isalnum() or c in " _-")[:64] or "Verdana"
 
     # Convert colors to ASS format and build style
     primary_colour = hex_to_ass_color(font_color, 1.0)
@@ -197,7 +220,7 @@ def burn_subtitles(video_path, srt_path, output_path, alignment=2, fontsize=16,
 
     style_string = (
         f"Alignment={ass_alignment},"
-        f"Fontname={font_name},"
+        f"Fontname={safe_font_name},"
         f"Fontsize={final_fontsize},"
         f"PrimaryColour={primary_colour},"
         f"OutlineColour={outline_colour},"

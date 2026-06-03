@@ -61,7 +61,7 @@ export default function GalleryCard({ clip }) {
             document.body.removeChild(a);
         } catch (err) {
             console.error('Download error:', err);
-            window.open(clip.url, '_blank');
+            window.open(clip.url, '_blank', 'noopener,noreferrer');
         }
     };
 

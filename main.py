@@ -440,10 +440,19 @@ def get_video_resolution(video_path):
 
 
 def sanitize_filename(filename):
-    """Remove invalid characters from filename."""
-    filename = re.sub(r'[<>:"/\\|?*#]', '', filename)
+    """Reduce a title to a safe filename component.
+
+    Beyond stripping shell/path-hostile characters, this strips any leading
+    dashes/dots and removes '..' so a hostile video title (e.g. "-i", "--help",
+    or "..") can't be parsed by ffmpeg/yt-dlp as an OPTION or escape the output
+    directory. Falls back to a constant when nothing safe remains.
+    """
+    filename = re.sub(r'[<>:"/\\|?*#]', '', filename or "")
     filename = filename.replace(' ', '_')
-    return filename[:100]
+    filename = filename.replace('..', '')
+    filename = filename.lstrip('-._')
+    filename = filename[:100].strip()
+    return filename or "video"
 
 
 def download_youtube_video(url, output_dir="."):
@@ -483,7 +492,9 @@ def download_youtube_video(url, output_dir="."):
         'socket_timeout': 30,
         'retries': 10,
         'fragment_retries': 10,
-        'nocheckcertificate': True,
+        # TLS verification ON by default (was disabled, enabling MITM of the
+        # downloaded video). Only relax it via an explicit opt-in env var.
+        'nocheckcertificate': os.environ.get("YTDLP_INSECURE", "").lower() in ("1", "true", "yes"),
         'cachedir': False,
         'extractor_args': {
             'youtube': {
@@ -540,7 +551,13 @@ Technical Details: {str(e)}
             
             # Wait a split second to allow buffer to drain before raising
             time.sleep(0.5)
-            
+
+            if cookies_path and os.path.exists(cookies_path):
+                try:
+                    os.remove(cookies_path)
+                except OSError:
+                    pass
+
             raise e
     
     output_template = os.path.join(output_dir, f'{sanitized_title}.%(ext)s')
@@ -570,7 +587,13 @@ Technical Details: {str(e)}
     
     step_end_time = time.time()
     print(f"✅ Video downloaded in {step_end_time - step_start_time:.2f}s: {downloaded_file}")
-    
+
+    if cookies_path and os.path.exists(cookies_path):
+        try:
+            os.remove(cookies_path)  # don't leave session-cookie secrets on disk
+        except OSError:
+            pass
+
     return downloaded_file, sanitized_title
 
 def process_video_to_vertical(input_video, final_output_video):
@@ -622,6 +645,10 @@ def process_video_to_vertical(input_video, final_output_video):
     
     print("\n   ✂️ Step 4: Processing video frames...")
     
+    # Guard against a 0/None fps from some containers (would make ffmpeg '-r 0' fail).
+    if not fps or fps <= 0:
+        fps = 30
+
     command = [
         'ffmpeg', '-y', '-f', 'rawvideo', '-vcodec', 'rawvideo',
         '-s', f'{OUTPUT_WIDTH}x{OUTPUT_HEIGHT}', '-pix_fmt', 'bgr24',
@@ -641,22 +668,22 @@ def process_video_to_vertical(input_video, final_output_video):
     )
     stderr_thread.start()
 
-    cap = cv2.VideoCapture(input_video)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-    frame_number = 0
-    current_scene_index = 0
-
-    # Pre-calculate scene boundaries
-    scene_boundaries = []
-    for s_start, s_end in scenes:
-        scene_boundaries.append((s_start.get_frames(), s_end.get_frames()))
-
-    # Global tracker for single-person shots
-    speaker_tracker = SpeakerTracker(cooldown_frames=30)
-
+    cap = None
     pipe_broken = False
     try:
+        cap = cv2.VideoCapture(input_video)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        frame_number = 0
+        current_scene_index = 0
+
+        # Pre-calculate scene boundaries
+        scene_boundaries = []
+        for s_start, s_end in scenes:
+            scene_boundaries.append((s_start.get_frames(), s_end.get_frames()))
+
+        # Global tracker for single-person shots
+        speaker_tracker = SpeakerTracker(cooldown_frames=30)
         with tqdm(total=total_frames, desc="   Processing", file=sys.stdout) as pbar:
             while cap.isOpened():
                 ret, frame = cap.read()
@@ -718,12 +745,18 @@ def process_video_to_vertical(input_video, final_output_video):
                 pbar.update(1)
     finally:
         # Always release the capture and close/await ffmpeg, even on error.
-        cap.release()
+        if cap is not None:
+            cap.release()
         try:
             ffmpeg_process.stdin.close()
         except Exception:
             pass
-        ffmpeg_process.wait()
+        # Bounded wait so a wedged ffmpeg can't hang the worker pool forever (DoS).
+        try:
+            ffmpeg_process.wait(timeout=900)
+        except subprocess.TimeoutExpired:
+            ffmpeg_process.kill()
+            ffmpeg_process.wait()
         stderr_thread.join(timeout=5)
 
     stderr_output = stderr_chunks[0].decode(errors="replace") if stderr_chunks else ""
@@ -738,10 +771,17 @@ def process_video_to_vertical(input_video, final_output_video):
         'ffmpeg', '-y', '-i', input_video, '-vn', '-acodec', 'copy', temp_audio_output
     ]
     try:
-        subprocess.run(audio_extract_command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-    except subprocess.CalledProcessError:
-        print("\n   ❌ Audio extraction failed (maybe no audio?). Proceeding without audio.")
-        pass
+        subprocess.run(audio_extract_command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=600)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        # Stream-copy failed (e.g. an Opus/Vorbis source) — re-encode to AAC
+        # rather than silently dropping the audio track.
+        try:
+            subprocess.run(
+                ['ffmpeg', '-y', '-i', input_video, '-vn', '-c:a', 'aac', temp_audio_output],
+                check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=600
+            )
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            print("\n   ❌ Audio extraction failed (maybe no audio?). Proceeding without audio.")
 
     print("\n   ✨ Step 6: Merging...")
     if os.path.exists(temp_audio_output):
@@ -756,7 +796,7 @@ def process_video_to_vertical(input_video, final_output_video):
         ]
         
     try:
-        subprocess.run(merge_command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        subprocess.run(merge_command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=600)
         print(f"   ✅ Clip saved to {final_output_video}")
     except subprocess.CalledProcessError as e:
         print("\n   ❌ Final merge failed.")
@@ -778,7 +818,11 @@ def transcribe_video(video_path):
     # "base.en" is faster AND more accurate than multilingual "base" for English
     # sermons. Override via WHISPER_MODEL / WHISPER_THREADS env vars.
     model_name = os.environ.get("WHISPER_MODEL", "base.en")
-    cpu_threads = int(os.environ.get("WHISPER_THREADS", str(os.cpu_count() or 8)))
+    try:
+        cpu_threads = int(os.environ.get("WHISPER_THREADS") or (os.cpu_count() or 8))
+    except (TypeError, ValueError):
+        cpu_threads = os.cpu_count() or 8
+    cpu_threads = max(1, min(cpu_threads, 64))
     model = WhisperModel(model_name, device="cpu", compute_type="int8", cpu_threads=cpu_threads)
     print(f"   Model: {model_name} | CPU threads: {cpu_threads}")
 
@@ -788,7 +832,7 @@ def transcribe_video(video_path):
     # single-threaded and pathologically slow on this ARM64 container — in testing
     # it added a ~7+ minute SILENT pre-pass before any transcript appeared. Not
     # worth it. (Set WHISPER_VAD=1 to re-enable on hardware where it's fast.)
-    use_vad = os.environ.get("WHISPER_VAD", "0") == "1"
+    use_vad = os.environ.get("WHISPER_VAD", "0").lower() in ("1", "true", "yes")
     segments, info = model.transcribe(
         video_path, word_timestamps=True, beam_size=1, vad_filter=use_vad
     )
@@ -1041,8 +1085,11 @@ if __name__ == '__main__':
                           f"({clip.get('start')!r}–{clip.get('end')!r}).")
                     continue
                 start = max(0.0, start)
-                if duration:
-                    end = min(duration, end)
+                # Always clamp end to a known duration. If duration is unknown,
+                # cap to a sane maximum so a hallucinated end (e.g. 999999) can't
+                # drive a runaway ffmpeg cut.
+                _max_end = duration if (duration and duration > 0) else (start + 120.0)
+                end = min(_max_end, end)
                 if end <= start or (end - start) < 1.0:
                     print(f"   ⚠️ Skipping clip {i+1}: invalid range {start:.2f}s–{end:.2f}s.")
                     continue
@@ -1059,14 +1106,20 @@ if __name__ == '__main__':
                 # Using re-encoding for precision as requested by strict seconds
                 cut_command = [
                     'ffmpeg', '-y',
-                    '-ss', str(start),
-                    '-to', str(end),
+                    '-ss', f"{start:.3f}",
+                    '-to', f"{end:.3f}",
                     '-i', input_video,
                     '-c:v', 'libx264', '-crf', '18', '-preset', 'veryfast',
                     '-c:a', 'aac',
                     clip_temp_path
                 ]
-                cut_result = subprocess.run(cut_command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+                try:
+                    cut_result = subprocess.run(cut_command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=900)
+                except subprocess.TimeoutExpired:
+                    print(f"   ❌ Skipping clip {i+1}: ffmpeg cut timed out.")
+                    if os.path.exists(clip_temp_path):
+                        os.remove(clip_temp_path)
+                    continue
                 if (cut_result.returncode != 0
                         or not os.path.exists(clip_temp_path)
                         or os.path.getsize(clip_temp_path) == 0):

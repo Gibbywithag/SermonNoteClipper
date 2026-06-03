@@ -6,8 +6,9 @@ import ResultCard from './components/ResultCard';
 // import Gallery from './components/Gallery';
 import { getApiUrl } from './config';
 
-// Enhanced "Encryption" using XOR + Base64 with a Salt
-// This is better than plain Base64 but still client-side.
+// Light obfuscation (NOT encryption) using XOR + Base64 with a Salt.
+// This only hides the raw key from a casual localStorage glance; it is reversible
+// client-side by anyone with the source and must not be treated as real encryption.
 const SECRET_KEY = import.meta.env.VITE_ENCRYPTION_KEY || "SermonNoteClipper-Salt-Key";
 const ENCRYPTION_PREFIX = "ENC:";
 
@@ -63,8 +64,12 @@ const pollJob = async (jobId) => {
 };
 
 function App() {
-  const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_key') || '');
-  // ElevenLabs API State - Load encrypted
+  const [apiKey, setApiKey] = useState(() => {
+    const stored = localStorage.getItem('gemini_key');
+    if (stored) return decrypt(stored);
+    return '';
+  });
+  // ElevenLabs API State - Load lightly obfuscated (not encryption)
   const [elevenLabsKey, setElevenLabsKey] = useState(() => {
     const stored = localStorage.getItem('elevenLabsKey_v1');
     if (stored) return decrypt(stored);
@@ -139,9 +144,9 @@ function App() {
   }, [jobId, status, results, activeTab, processingMedia]);
 
   useEffect(() => {
-    // Encrypt Gemini Key too for consistency if desired, but user asked specifically about Social integration not saving well.
-    // For now keeping gemini plain for compatibility unless requested.
-    if (apiKey) localStorage.setItem('gemini_key', apiKey);
+    // Store the Gemini key lightly obfuscated (not encryption) for consistency with the ElevenLabs key,
+    // so it is at least not sitting in localStorage as raw cleartext.
+    if (apiKey) localStorage.setItem('gemini_key', encrypt(apiKey));
   }, [apiKey]);
 
   useEffect(() => {

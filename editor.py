@@ -11,6 +11,11 @@ class VideoEditor:
         # Optional LLM gateway/proxy via GEMINI_BASE_URL (Cloudflare AI Gateway,
         # LiteLLM, etc.) for logging / rate-limits / cost control.
         _base_url = os.environ.get("GEMINI_BASE_URL")
+        # Only honor an http(s) gateway URL — never route the credentialed Gemini
+        # client through an arbitrary/non-web scheme.
+        if _base_url and not _base_url.lower().startswith(("http://", "https://")):
+            print("⚠️ Ignoring GEMINI_BASE_URL (must be http/https).")
+            _base_url = None
         _http_opts = types.HttpOptions(base_url=_base_url) if _base_url else None
         self.client = genai.Client(api_key=api_key, http_options=_http_opts)
         # Default to the model the core pipeline uses (confirmed valid). The
@@ -127,7 +132,8 @@ class VideoEditor:
             )
         )
         
-        print(f"🔍 DEBUG: Gemini Raw Response:\n{response.text}")
+        if os.environ.get("EDITOR_DEBUG"):
+            print(f"🔍 DEBUG: Gemini Raw Response:\n{response.text}")
 
         try:
             # Clean response text (remove potential markdown blocks)
@@ -223,7 +229,8 @@ class VideoEditor:
             )
         )
 
-        print(f"🔍 DEBUG: Gemini Raw Response:\n{response.text}")
+        if os.environ.get("EDITOR_DEBUG"):
+            print(f"🔍 DEBUG: Gemini Raw Response:\n{response.text}")
 
         try:
             # Clean response text (remove potential markdown blocks)
@@ -251,6 +258,39 @@ class VideoEditor:
         except json.JSONDecodeError:
             print(f"❌ Failed to parse effects config JSON: {response.text}")
             return None
+
+    # --- Safety: only allow visual-only filters from AI output (no file/media sources) ---
+    _ALLOWED_FILTERS = {
+        "zoompan", "eq", "hue", "curves", "unsharp", "setsar", "setdar",
+        "scale", "crop", "pad", "format", "fps", "setpts", "colorbalance",
+        "colorchannelmixer", "gblur", "boxblur", "vignette", "fade", "null",
+    }
+    # Tokens that can read/write files, spawn media sources, or chain graphs.
+    _FORBIDDEN_TOKENS = (
+        "movie", "amovie", "filename=", "textfile=", "fontfile=",
+        "fontconfig", "subfile", "concat", "`", "$(", ";",
+    )
+
+    @classmethod
+    def _is_filter_safe(cls, filter_string: str) -> bool:
+        """Reject any AI filtergraph that uses a non-allowlisted filter or a
+        file/media-source token. Defends against a prompt-injected transcript
+        emitting a -vf payload like movie=/etc/passwd or drawtext=textfile=...
+        that would read local files into the rendered clip."""
+        if not filter_string or len(filter_string) > 4000:
+            return False
+        low = filter_string.lower()
+        if any(tok in low for tok in cls._FORBIDDEN_TOKENS):
+            return False
+        for part in cls._split_filter_chain(filter_string):
+            part = part.strip()
+            if not part:
+                continue
+            name = part.split('=', 1)[0].strip().lower()
+            name = name.split(']')[-1]  # drop any leading [label]
+            if name not in cls._ALLOWED_FILTERS:
+                return False
+        return True
 
     @staticmethod
     def _split_filter_chain(filter_string: str) -> list[str]:
@@ -308,7 +348,7 @@ class VideoEditor:
         
         if not filter_data or "filter_string" not in filter_data:
             print("⚠️ No filter string found. Copying original.")
-            subprocess.run(['ffmpeg', '-y', '-i', input_path, '-c', 'copy', output_path])
+            subprocess.run(['ffmpeg', '-y', '-i', input_path, '-c', 'copy', output_path], check=True)
             return
 
         filter_string = filter_data["filter_string"]
@@ -341,8 +381,16 @@ class VideoEditor:
             if "setsar=" not in filter_string:
                 filter_string = f"{filter_string},setsar=1"
 
+        # Hard safety gate: never execute an AI-generated filtergraph that isn't a
+        # known visual-only filter set. A prompt-injected transcript could otherwise
+        # emit movie=/etc/passwd or drawtext=textfile=... to read local files.
+        if not self._is_filter_safe(filter_string):
+            print("⚠️ Rejected unsafe AI filter — copying original without effects.")
+            subprocess.run(['ffmpeg', '-y', '-i', input_path, '-c', 'copy', output_path], check=True)
+            return
+
         print(f"🎬 Executing AI Filter: {filter_string}")
-        
+
         cmd = [
             'ffmpeg', '-y',
             '-i', input_path,

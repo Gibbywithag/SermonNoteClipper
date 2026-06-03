@@ -1,4 +1,5 @@
 import os
+import uuid
 import textwrap
 import subprocess
 import urllib.request
@@ -194,9 +195,13 @@ def add_hook_to_video(video_path, text, output_path, position="top", font_scale=
     # Box check: Don't let it be wider than 90% of screen
     target_box_width = int(video_width * 0.9)
     
-    hook_filename = f"temp_hook_{os.path.basename(video_path)}.png"
-    # Ensure unique or temp location if needed, but relative is fine for this app structure
-    
+    hook_filename = f"temp_hook_{uuid.uuid4().hex}.png"
+    # Unique name in the video's output directory to avoid collisions/races
+    # between concurrent jobs and to keep the CWD clean.
+    hook_filename = os.path.join(
+        os.path.dirname(os.path.abspath(video_path)), hook_filename
+    )
+
     try:
         img_path, box_w, box_h = create_hook_image(text, target_box_width, hook_filename, font_scale=font_scale)
         

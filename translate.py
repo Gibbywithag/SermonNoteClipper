@@ -5,6 +5,7 @@ Uses ElevenLabs Dubbing API to translate video audio to different languages.
 """
 
 import os
+import re
 import time
 import httpx
 from typing import Optional
@@ -65,6 +66,9 @@ def create_dubbing_project(
     Returns:
         dict with dubbing_id and expected_duration_sec
     """
+    if target_language not in SUPPORTED_LANGUAGES:
+        raise ValueError(f"Unsupported target language: {target_language}")
+
     url = f"{ELEVENLABS_API_BASE}/dubbing"
 
     headers = {
@@ -93,11 +97,11 @@ def create_dubbing_project(
             response = client.post(url, headers=headers, data=data, files=files)
 
     if response.status_code not in [200, 201]:
-        error_msg = response.text
+        error_msg = response.text[:200]
         try:
             error_data = response.json()
-            error_msg = error_data.get("detail", {}).get("message", response.text)
-        except:
+            error_msg = error_data.get("detail", {}).get("message", response.text[:200])
+        except Exception:
             pass
         raise Exception(f"ElevenLabs API error: {error_msg}")
 
@@ -123,7 +127,7 @@ def get_dubbing_status(dubbing_id: str, api_key: str) -> dict:
         response = client.get(url, headers=headers)
 
     if response.status_code != 200:
-        raise Exception(f"Failed to get dubbing status: {response.text}")
+        raise Exception(f"Failed to get dubbing status: {response.text[:200]}")
 
     return response.json()
 
@@ -146,6 +150,11 @@ def download_dubbed_video(
     Returns:
         Path to the downloaded file
     """
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", str(dubbing_id)):
+        raise ValueError("Invalid dubbing id")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", str(target_language)):
+        raise ValueError("Invalid target language")
+
     url = f"{ELEVENLABS_API_BASE}/dubbing/{dubbing_id}/audio/{target_language}"
 
     headers = {
@@ -156,7 +165,7 @@ def download_dubbed_video(
     with httpx.Client(timeout=120.0) as client:
         with client.stream("GET", url, headers=headers) as response:
             if response.status_code != 200:
-                raise Exception(f"Failed to download dubbed video: {response.text}")
+                raise Exception(f"Failed to download dubbed video: {response.text[:200]}")
 
             with open(output_path, "wb") as f:
                 for chunk in response.iter_bytes(chunk_size=8192):
@@ -192,6 +201,9 @@ def translate_video(
     Returns:
         Path to the translated video
     """
+    if target_language not in SUPPORTED_LANGUAGES:
+        raise ValueError(f"Unsupported target language: {target_language}")
+
     # Create dubbing project
     project = create_dubbing_project(
         video_path=video_path,

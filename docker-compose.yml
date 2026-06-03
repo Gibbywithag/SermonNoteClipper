@@ -15,6 +15,12 @@ services:
       - ./output:/app/output          # generated clips show up on the host
       - model-cache:/root/.cache      # persist Whisper/HF model downloads between runs
     restart: unless-stopped
+    # Hardening: the media pipeline (ffmpeg/yt-dlp) processes untrusted input.
+    # It needs no Linux capabilities and should never gain new privileges.
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - ALL
 
 volumes:
   model-cache:

@@ -40,6 +40,11 @@ COPY --from=web /web/dist ./dashboard/dist
 
 ENV PYTHONUNBUFFERED=1
 
+# Liveness probe (uses python so we don't need curl in the slim image). Lets
+# Docker restart a wedged backend instead of leaving it "up" but unresponsive.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/config', timeout=4)" || exit 1
+
 EXPOSE 8000
 # Bind 0.0.0.0 INSIDE the container; docker-compose only publishes it to
 # 127.0.0.1 on the host. app.py spawns main.py with sys.executable (this

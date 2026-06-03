@@ -3,7 +3,7 @@ ultralytics==8.4.46
 torch==2.11.0
 torchvision==0.26.0
 tqdm==4.67.3
-yt-dlp
+yt-dlp==2026.3.17
 faster-whisper==1.2.1
 google-genai==1.75.0
 python-dotenv==1.2.2

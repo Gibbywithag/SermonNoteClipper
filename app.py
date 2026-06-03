@@ -32,7 +32,11 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Configuration
 # Default to 1 if not set, but user can set higher for powerful servers
-MAX_CONCURRENT_JOBS = int(os.environ.get("MAX_CONCURRENT_JOBS", "5"))
+try:
+    MAX_CONCURRENT_JOBS = int(os.environ.get("MAX_CONCURRENT_JOBS", "5"))
+except ValueError:
+    MAX_CONCURRENT_JOBS = 5
+MAX_CONCURRENT_JOBS = max(1, min(MAX_CONCURRENT_JOBS, 32))
 MAX_FILE_SIZE_MB = 2048  # 2GB limit
 JOB_RETENTION_SECONDS = 3600  # 1 hour retention
 DISABLE_YOUTUBE_URL = os.environ.get("DISABLE_YOUTUBE_URL", "false").lower() in ("1", "true", "yes")
@@ -141,6 +145,11 @@ async def cleanup_jobs():
             for job_id in os.listdir(OUTPUT_DIR):
                 job_path = os.path.join(OUTPUT_DIR, job_id)
                 if os.path.isdir(job_path):
+                    # Never purge a job that is still queued/processing — that would
+                    # delete artifacts out from under a running subprocess.
+                    j = jobs.get(job_id)
+                    if j and j.get('status') in ('queued', 'processing'):
+                        continue
                     if now - os.path.getmtime(job_path) > JOB_RETENTION_SECONDS:
                         print(f"🧹 Purging old job: {job_id}")
                         shutil.rmtree(job_path, ignore_errors=True)
@@ -223,6 +232,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# DNS-rebinding / CSRF defense for this local-first API. A malicious website can
+# point its own hostname at 127.0.0.1 and POST to this server (the API is
+# unauthenticated and, with a server-side GEMINI_API_KEY, needs no key) — but it
+# cannot forge the Host header to a loopback name. Reject any non-loopback Host.
+_ALLOWED_HOSTS = {
+    h.strip().lower()
+    for h in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,::1,0.0.0.0").split(",")
+    if h.strip()
+}
+
+
+@app.middleware("http")
+async def _host_guard(request: Request, call_next):
+    from fastapi.responses import JSONResponse
+    raw = (request.headers.get("host") or "").strip().lower()
+    if raw.startswith("[") and "]" in raw:        # IPv6, e.g. [::1]:8000
+        host = raw[1:raw.find("]")]
+    else:
+        host = raw.split(":")[0]
+    if host and host not in _ALLOWED_HOSTS:
+        return JSONResponse(status_code=421, content={"detail": "Host not allowed"})
+    return await call_next(request)
+
 # Mount static files for serving videos
 app.mount("/videos", StaticFiles(directory=OUTPUT_DIR), name="videos")
 
@@ -238,7 +270,7 @@ def enqueue_output(out, job_id):
     """Reads output from a subprocess and appends it to jobs logs."""
     try:
         for line in iter(out.readline, b''):
-            decoded_line = line.decode('utf-8').strip()
+            decoded_line = line.decode('utf-8', errors='replace').strip()
             if decoded_line:
                 print(f"📝 [Job Output] {decoded_line}")
                 if job_id in jobs:
@@ -390,7 +422,10 @@ async def process_endpoint(
     # Handle JSON body manually for URL payload
     content_type = request.headers.get("content-type", "")
     if "application/json" in content_type:
-        body = await request.json()
+        try:
+            body = await request.json()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid JSON body")
         url = body.get("url")
         ack_flag = bool(body.get("acknowledged"))
 
@@ -409,9 +444,12 @@ async def process_endpoint(
 
     # Capture attestation context for legal record (IP + timestamp + UA)
     client_ip = request.client.host if request.client else "unknown"
-    fwd = request.headers.get("x-forwarded-for")
-    if fwd:
-        client_ip = fwd.split(",")[0].strip()
+    # Only honor X-Forwarded-For behind a trusted proxy; otherwise it's spoofable
+    # and would poison the attestation record.
+    if os.environ.get("TRUST_FORWARDED_FOR"):
+        fwd = request.headers.get("x-forwarded-for")
+        if fwd:
+            client_ip = fwd.split(",")[0].strip()
     user_agent = request.headers.get("user-agent", "")
     attestation = {
         "acknowledged": True,
@@ -420,6 +458,12 @@ async def process_endpoint(
         "timestamp": time.time(),
         "source": "url" if url else "file",
     }
+
+    # Lightweight DoS guard: cap simultaneously queued/processing jobs so a flood
+    # of submissions can't exhaust memory/disk.
+    active = sum(1 for j in jobs.values() if j.get('status') in ('queued', 'processing'))
+    if active >= MAX_CONCURRENT_JOBS * 4:
+        raise HTTPException(status_code=429, detail="Too many jobs in progress. Try again shortly.")
 
     job_id = str(uuid.uuid4())
     job_output_dir = os.path.join(OUTPUT_DIR, job_id)
@@ -528,7 +572,7 @@ async def edit_clip(
             input_path = os.path.join(OUTPUT_DIR, req.job_id, filename)
 
         if not os.path.exists(input_path):
-             raise HTTPException(status_code=404, detail=f"Video file not found: {input_path}")
+             raise HTTPException(status_code=404, detail="Video file not found")
 
         # Define output path for edited video
         edited_filename = f"edited_{filename}"
@@ -617,7 +661,7 @@ async def edit_clip(
 
     except Exception as e:
         print(f"❌ Edit Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal error while processing the request.")
 
 class SubtitleRequest(BaseModel):
     job_id: str
@@ -653,7 +697,7 @@ async def get_clip_transcript(job_id: str, clip_index: int):
         raise HTTPException(status_code=400, detail="Transcript not found in metadata")
 
     clips = data.get('shorts', [])
-    if clip_index >= len(clips):
+    if clip_index < 0 or clip_index >= len(clips):
         raise HTTPException(status_code=404, detail="Clip not found")
 
     clip_data = clips[clip_index]
@@ -693,18 +737,20 @@ async def proxy_render(request: Request):
             resp = await client.post(f"{RENDER_SERVICE_URL}/render", json=body)
             return resp.json()
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Render service unavailable: {e}")
+        raise HTTPException(status_code=502, detail="Render service unavailable")
 
 @app.get("/api/render/{render_id}")
 async def proxy_render_status(render_id: str):
     """Proxy render status polling to the Node.js Remotion render service."""
     import httpx
+    if not is_safe_id(render_id):
+        raise HTTPException(status_code=400, detail="Invalid render id")
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(f"{RENDER_SERVICE_URL}/render/{render_id}")
             return resp.json()
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Render service unavailable: {e}")
+        raise HTTPException(status_code=502, detail="Render service unavailable")
 
 
 class EffectsGenerateRequest(BaseModel):
@@ -744,7 +790,7 @@ async def generate_effects_config(
             input_path = os.path.join(OUTPUT_DIR, req.job_id, filename)
 
         if not os.path.exists(input_path):
-            raise HTTPException(status_code=404, detail=f"Video file not found: {input_path}")
+            raise HTTPException(status_code=404, detail="Video file not found")
 
         def run_effects_generation():
             editor = VideoEditor(api_key=final_api_key)
@@ -817,7 +863,7 @@ async def generate_effects_config(
         raise
     except Exception as e:
         print(f"❌ Effects Generation Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal error while processing the request.")
 
 
 @app.post("/api/subtitle")
@@ -843,7 +889,7 @@ async def add_subtitles(req: SubtitleRequest):
         raise HTTPException(status_code=400, detail="Transcript not found in metadata. Please process a new video.")
         
     clips = data.get('shorts', [])
-    if req.clip_index >= len(clips):
+    if req.clip_index < 0 or req.clip_index >= len(clips):
         raise HTTPException(status_code=404, detail="Clip not found")
         
     clip_data = clips[req.clip_index]
@@ -863,7 +909,7 @@ async def add_subtitles(req: SubtitleRequest):
     if not os.path.exists(input_path):
         # Try looking for edited version if url implied it?
         # Just fail if not found.
-        raise HTTPException(status_code=404, detail=f"Video file not found: {input_path}")
+        raise HTTPException(status_code=404, detail="Video file not found")
         
     # Define outputs
     srt_filename = f"subs_{req.clip_index}_{int(time.time())}.srt"
@@ -906,7 +952,7 @@ async def add_subtitles(req: SubtitleRequest):
         
     except Exception as e:
         print(f"❌ Subtitle Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal error while processing the request.")
         
     # 3. Update Result and Metadata
     # Update InMemory Jobs
@@ -957,7 +1003,7 @@ async def add_hook(req: HookRequest):
         data = json.load(f)
         
     clips = data.get('shorts', [])
-    if req.clip_index >= len(clips):
+    if req.clip_index < 0 or req.clip_index >= len(clips):
         raise HTTPException(status_code=404, detail="Clip not found")
         
     clip_data = clips[req.clip_index]
@@ -973,7 +1019,7 @@ async def add_hook(req: HookRequest):
          
     input_path = os.path.join(output_dir, filename)
     if not os.path.exists(input_path):
-        raise HTTPException(status_code=404, detail=f"Video file not found: {input_path}")
+        raise HTTPException(status_code=404, detail="Video file not found")
         
     # Output video
     output_filename = f"hook_{filename}"
@@ -993,7 +1039,7 @@ async def add_hook(req: HookRequest):
         
     except Exception as e:
         print(f"❌ Hook Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal error while processing the request.")
         
     # Update Persistence (Same logic as subtitles)
     # Update InMemory Jobs
@@ -1051,7 +1097,7 @@ async def translate_clip(
         data = json.load(f)
 
     clips = data.get('shorts', [])
-    if req.clip_index >= len(clips):
+    if req.clip_index < 0 or req.clip_index >= len(clips):
         raise HTTPException(status_code=404, detail="Clip not found")
 
     clip_data = clips[req.clip_index]
@@ -1067,7 +1113,7 @@ async def translate_clip(
 
     input_path = os.path.join(output_dir, filename)
     if not os.path.exists(input_path):
-        raise HTTPException(status_code=404, detail=f"Video file not found: {input_path}")
+        raise HTTPException(status_code=404, detail="Video file not found")
 
     # Output video with language suffix
     base, ext = os.path.splitext(filename)
@@ -1090,7 +1136,7 @@ async def translate_clip(
 
     except Exception as e:
         print(f"❌ Translation Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal error while processing the request.")
 
     # Update InMemory Jobs
     if req.clip_index < len(job['result']['clips']):

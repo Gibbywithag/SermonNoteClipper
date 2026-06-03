@@ -236,12 +236,10 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
     };
 
     const handleTranslate = async (options) => {
-        console.log('[Translate] Starting translation with options:', options);
         setIsTranslating(true);
         setEditError(null);
         try {
             const apiKey = elevenLabsKey;
-            console.log('[Translate] API Key available:', !!apiKey);
 
             if (!apiKey) {
                 throw new Error("ElevenLabs API Key is missing. Please set it in Settings.");
@@ -253,8 +251,6 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                 target_language: options.targetLanguage,
                 input_filename: serverFilename
             };
-            console.log('[Translate] Request body:', requestBody);
-            console.log('[Translate] Sending request to /api/translate');
 
             const res = await fetch(getApiUrl('/api/translate'), {
                 method: 'POST',
@@ -265,11 +261,9 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                 body: JSON.stringify(requestBody)
             });
 
-            console.log('[Translate] Response status:', res.status);
-
             if (!res.ok) {
                 const errText = await res.text();
-                console.error('[Translate] Error response:', errText);
+                if (import.meta.env.DEV) { console.error('[Translate] Error response:', errText); }
                 try {
                     const jsonErr = JSON.parse(errText);
                     throw new Error(jsonErr.detail || errText);
@@ -280,7 +274,6 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
             }
 
             const data = await res.json();
-            console.log('[Translate] Success response:', data);
             if (data.new_video_url) {
                 setServerFilename(data.new_video_url.split('/').pop());
                 setCurrentVideoUrl(getApiUrl(data.new_video_url));
@@ -291,7 +284,7 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
             }
 
         } catch (e) {
-            console.error('[Translate] Exception:', e);
+            if (import.meta.env.DEV) { console.error('[Translate] Exception:', e); }
             setEditError(e.message);
             setTimeout(() => setEditError(null), 5000);
         } finally {
@@ -399,8 +392,8 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                                 window.URL.revokeObjectURL(url);
                                 document.body.removeChild(a);
                             } catch (err) {
-                                console.error('Download error:', err);
-                                window.open(currentVideoUrl, '_blank');
+                                if (import.meta.env.DEV) { console.error('Download error:', err); }
+                                window.open(currentVideoUrl, '_blank', 'noopener,noreferrer');
                             }
                         }}
                         className="btn-primary w-full !py-2.5 !rounded-lg text-sm flex items-center justify-center gap-2"

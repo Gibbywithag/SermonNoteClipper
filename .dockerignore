@@ -43,8 +43,18 @@ Dockerfile
 docker-compose.yml
 .dockerignore
 
-# Secrets — passed at runtime via env_file, never baked into the image
+# Secrets — passed at runtime via env_file, never baked into the image.
+# Denylist is defense-in-depth: keep ANY secret-bearing file out of image layers.
 .env
+.env.*
+*.pem
+*.key
+*.crt
+cookies*.txt
+*.cookies
+*_metadata.json
+memory/
+.claude/
 
 # Runtime / build output (not needed in the image)
 output/
