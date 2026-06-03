@@ -16,7 +16,10 @@ def transcribe_audio(video_path):
     cpu_threads = int(os.environ.get("WHISPER_THREADS", str(os.cpu_count() or 8)))
     model = WhisperModel("base", device="cpu", compute_type="int8", cpu_threads=cpu_threads)
 
-    segments, info = model.transcribe(video_path, word_timestamps=True, beam_size=1, vad_filter=True)
+    # vad_filter off — Silero VAD via onnxruntime is extremely slow on this ARM64
+    # container (see main.py). Set WHISPER_VAD=1 to re-enable where it's fast.
+    use_vad = os.environ.get("WHISPER_VAD", "0") == "1"
+    segments, info = model.transcribe(video_path, word_timestamps=True, beam_size=1, vad_filter=use_vad)
 
     transcript = {
         "segments": [],

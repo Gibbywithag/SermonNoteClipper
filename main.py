@@ -782,10 +782,15 @@ def transcribe_video(video_path):
     model = WhisperModel(model_name, device="cpu", compute_type="int8", cpu_threads=cpu_threads)
     print(f"   Model: {model_name} | CPU threads: {cpu_threads}")
 
-    # vad_filter skips silent gaps (sermons pause a lot); beam_size=1 (greedy) is
-    # much faster with negligible accuracy loss on clear preaching.
+    # beam_size=1 (greedy) is much faster than the default beam search with
+    # negligible accuracy loss on clear preaching.
+    # NOTE: vad_filter is intentionally OFF. Silero VAD via onnxruntime is
+    # single-threaded and pathologically slow on this ARM64 container — in testing
+    # it added a ~7+ minute SILENT pre-pass before any transcript appeared. Not
+    # worth it. (Set WHISPER_VAD=1 to re-enable on hardware where it's fast.)
+    use_vad = os.environ.get("WHISPER_VAD", "0") == "1"
     segments, info = model.transcribe(
-        video_path, word_timestamps=True, beam_size=1, vad_filter=True
+        video_path, word_timestamps=True, beam_size=1, vad_filter=use_vad
     )
     
     print(f"   Detected language '{info.language}' with probability {info.language_probability:.2f}")
