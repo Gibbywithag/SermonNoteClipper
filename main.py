@@ -347,40 +347,29 @@ def detect_person_yolo(frame):
 
 def create_general_frame(frame, output_width, output_height):
     """
-    Creates a 'General Shot' frame: 
-    - Background: Blurred zoom of original
-    - Foreground: Original video scaled to fit width, centered vertically.
+    Creates a 'General Shot' frame by zooming the original to FILL the entire
+    9:16 frame, then center-cropping. No blurred background and no letterbox
+    bars — the video covers the full frame; the sides of very wide shots get
+    cropped off. This keeps wide/group shots visually consistent with the
+    full-frame look of the tracked single-speaker shots.
     """
     orig_h, orig_w = frame.shape[:2]
-    
-    # 1. Background (Fill Height)
-    # Crop center to aspect ratio
-    bg_scale = output_height / orig_h
-    bg_w = int(orig_w * bg_scale)
-    bg_resized = cv2.resize(frame, (bg_w, output_height))
-    
-    # Crop center of background
-    start_x = (bg_w - output_width) // 2
-    if start_x < 0: start_x = 0
-    background = bg_resized[:, start_x:start_x+output_width]
-    if background.shape[1] != output_width:
-        background = cv2.resize(background, (output_width, output_height))
-        
-    # Blur background
-    background = cv2.GaussianBlur(background, (51, 51), 0)
-    
-    # 2. Foreground (Fit Width)
-    scale = output_width / orig_w
-    fg_h = int(orig_h * scale)
-    foreground = cv2.resize(frame, (output_width, fg_h))
-    
-    # 3. Overlay
-    y_offset = (output_height - fg_h) // 2
-    
-    # Clone background to avoid modifying it
-    final_frame = background.copy()
-    final_frame[y_offset:y_offset+fg_h, :] = foreground
-    
+
+    # Scale so the frame COVERS the output (use the larger of the two scale
+    # factors), then center-crop to the exact output dimensions.
+    scale = max(output_width / orig_w, output_height / orig_h)
+    new_w = max(int(round(orig_w * scale)), output_width)
+    new_h = max(int(round(orig_h * scale)), output_height)
+    resized = cv2.resize(frame, (new_w, new_h))
+
+    start_x = (new_w - output_width) // 2
+    start_y = (new_h - output_height) // 2
+    final_frame = resized[start_y:start_y + output_height, start_x:start_x + output_width]
+
+    # Guard against any off-by-one from rounding so dimensions are always exact.
+    if final_frame.shape[0] != output_height or final_frame.shape[1] != output_width:
+        final_frame = cv2.resize(final_frame, (output_width, output_height))
+
     return final_frame
 
 def analyze_scenes_strategy(video_path, scenes):
@@ -637,7 +626,7 @@ def process_video_to_vertical(input_video, final_output_video):
         'ffmpeg', '-y', '-f', 'rawvideo', '-vcodec', 'rawvideo',
         '-s', f'{OUTPUT_WIDTH}x{OUTPUT_HEIGHT}', '-pix_fmt', 'bgr24',
         '-r', str(fps), '-i', '-', '-c:v', 'libx264',
-        '-preset', 'fast', '-crf', '23', '-an', temp_video_output
+        '-preset', 'veryfast', '-crf', '23', '-an', temp_video_output
     ]
 
     ffmpeg_process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
@@ -695,8 +684,9 @@ def process_video_to_vertical(input_video, final_output_video):
                 else:
                     # "Single Speaker" -> Track & Crop
 
-                    # Detect every 2nd frame for performance
-                    if frame_number % 2 == 0:
+                    # Detect every 3rd frame for performance (was 2nd). The tracker
+                    # interpolates between detections, so tracking stays smooth.
+                    if frame_number % 3 == 0:
                         candidates = detect_face_candidates(frame)
                         target_box = speaker_tracker.get_target(candidates, frame_number, original_width)
                         if target_box:
@@ -783,10 +773,20 @@ def transcribe_video(video_path):
     print("🎙️  Transcribing video with Faster-Whisper (CPU Optimized)...")
     from faster_whisper import WhisperModel
     
-    # Run on CPU with INT8 quantization for speed
-    model = WhisperModel("base", device="cpu", compute_type="int8")
-    
-    segments, info = model.transcribe(video_path, word_timestamps=True)
+    # Run on CPU with INT8 quantization. cpu_threads uses ALL cores — the default
+    # only engages ~1, which was the single biggest transcription bottleneck.
+    # "base.en" is faster AND more accurate than multilingual "base" for English
+    # sermons. Override via WHISPER_MODEL / WHISPER_THREADS env vars.
+    model_name = os.environ.get("WHISPER_MODEL", "base.en")
+    cpu_threads = int(os.environ.get("WHISPER_THREADS", str(os.cpu_count() or 8)))
+    model = WhisperModel(model_name, device="cpu", compute_type="int8", cpu_threads=cpu_threads)
+    print(f"   Model: {model_name} | CPU threads: {cpu_threads}")
+
+    # vad_filter skips silent gaps (sermons pause a lot); beam_size=1 (greedy) is
+    # much faster with negligible accuracy loss on clear preaching.
+    segments, info = model.transcribe(
+        video_path, word_timestamps=True, beam_size=1, vad_filter=True
+    )
     
     print(f"   Detected language '{info.language}' with probability {info.language_probability:.2f}")
     
@@ -1057,7 +1057,7 @@ if __name__ == '__main__':
                     '-ss', str(start),
                     '-to', str(end),
                     '-i', input_video,
-                    '-c:v', 'libx264', '-crf', '18', '-preset', 'fast',
+                    '-c:v', 'libx264', '-crf', '18', '-preset', 'veryfast',
                     '-c:a', 'aac',
                     clip_temp_path
                 ]
