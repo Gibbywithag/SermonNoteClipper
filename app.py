@@ -38,7 +38,17 @@ except ValueError:
     MAX_CONCURRENT_JOBS = 5
 MAX_CONCURRENT_JOBS = max(1, min(MAX_CONCURRENT_JOBS, 32))
 MAX_FILE_SIZE_MB = 2048  # 2GB limit
-JOB_RETENTION_SECONDS = 3600  # 1 hour retention
+# Retention. The generated CLIPS are the product — keep them a long time. (The
+# old 1-hour default deleted finished clips out from under the user mid-review.)
+# Raw uploads are large and disposable, so clean those sooner. Override via env;
+# set CLIP_RETENTION_SECONDS=0 to never auto-delete clips.
+def _int_env(name, default):
+    try:
+        return int(os.environ.get(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+CLIP_RETENTION_SECONDS = _int_env("CLIP_RETENTION_SECONDS", 7 * 24 * 3600)   # clips: 7 days
+UPLOAD_RETENTION_SECONDS = _int_env("UPLOAD_RETENTION_SECONDS", 6 * 3600)    # uploads: 6 hours
 DISABLE_YOUTUBE_URL = os.environ.get("DISABLE_YOUTUBE_URL", "false").lower() in ("1", "true", "yes")
 
 # Application State
@@ -142,27 +152,30 @@ async def cleanup_jobs():
             
             # Simple directory cleanup based on modification time
             # Check OUTPUT_DIR
-            for job_id in os.listdir(OUTPUT_DIR):
-                job_path = os.path.join(OUTPUT_DIR, job_id)
-                if os.path.isdir(job_path):
-                    # Never purge a job that is still queued/processing — that would
-                    # delete artifacts out from under a running subprocess.
-                    j = jobs.get(job_id)
-                    if j and j.get('status') in ('queued', 'processing'):
-                        continue
-                    if now - os.path.getmtime(job_path) > JOB_RETENTION_SECONDS:
-                        print(f"🧹 Purging old job: {job_id}")
-                        shutil.rmtree(job_path, ignore_errors=True)
-                        if job_id in jobs:
-                            del jobs[job_id]
+            # Clips: keep for CLIP_RETENTION_SECONDS (0 = never auto-delete).
+            if CLIP_RETENTION_SECONDS > 0:
+                for job_id in os.listdir(OUTPUT_DIR):
+                    job_path = os.path.join(OUTPUT_DIR, job_id)
+                    if os.path.isdir(job_path):
+                        # Never purge a job that is still queued/processing — that
+                        # would delete artifacts out from under a running subprocess.
+                        j = jobs.get(job_id)
+                        if j and j.get('status') in ('queued', 'processing'):
+                            continue
+                        if now - os.path.getmtime(job_path) > CLIP_RETENTION_SECONDS:
+                            print(f"🧹 Purging old job: {job_id}")
+                            shutil.rmtree(job_path, ignore_errors=True)
+                            if job_id in jobs:
+                                del jobs[job_id]
 
-            # Cleanup Uploads
-            for filename in os.listdir(UPLOAD_DIR):
-                file_path = os.path.join(UPLOAD_DIR, filename)
-                try:
-                    if now - os.path.getmtime(file_path) > JOB_RETENTION_SECONDS:
-                         os.remove(file_path)
-                except Exception: pass
+            # Raw uploads (large, disposable): clean sooner.
+            if UPLOAD_RETENTION_SECONDS > 0:
+                for filename in os.listdir(UPLOAD_DIR):
+                    file_path = os.path.join(UPLOAD_DIR, filename)
+                    try:
+                        if now - os.path.getmtime(file_path) > UPLOAD_RETENTION_SECONDS:
+                            os.remove(file_path)
+                    except Exception: pass
 
         except Exception as e:
             print(f"⚠️ Cleanup error: {e}")
