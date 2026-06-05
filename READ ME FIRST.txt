@@ -1,0 +1,35 @@
+================================================================
+  SERMON CLIPPER  —  READ ME FIRST
+================================================================
+
+SET UP (one time):
+
+  1) Double-click:   Install Sermon Clipper.command
+
+  2) If your Mac warns that it "cannot verify the developer"
+     or mentions malware — this is NORMAL and SAFE. It only
+     means the app didn't come from the App Store.
+
+        →  RIGHT-CLICK the file, choose "Open", then "Open".
+
+     (On newer Macs, if you don't see an "Open" option:
+        Apple menu  →  System Settings  →  Privacy & Security
+        →  scroll down  →  click "Open Anyway".)
+
+  3) Follow the prompts. The very first setup takes about
+     10-20 minutes (it installs things and builds the app).
+     You only do this once.
+
+----------------------------------------------------------------
+
+EVERY DAY AFTER:
+
+  Just double-click:   Sermon Clipper.app
+  (Tip: drag it onto your Dock for one-click access.)
+
+----------------------------------------------------------------
+
+Need more detail?  Open  SETUP.md
+
+Keep this folder private — it contains your team's API key.
+================================================================

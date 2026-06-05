@@ -8,6 +8,11 @@ cd "$(dirname "$0")" || exit 1
 clear
 URL="http://127.0.0.1:8000"
 
+# Clear the macOS "downloaded from the internet" quarantine flag on this whole
+# folder, so the app and its files stop triggering the "unverified developer /
+# malware" warning after this first run. (This first run already got past it.)
+xattr -dr com.apple.quarantine "$PWD" 2>/dev/null
+
 echo "============================================================"
 echo "   Sermon Note Clipper — One-Time Setup"
 echo "============================================================"
