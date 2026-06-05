@@ -1172,6 +1172,57 @@ async def translate_clip(
     }
 
 
+@app.get("/api/exports")
+async def list_exports():
+    """List every generated clip on disk, grouped by sermon.
+
+    Reads from the OUTPUT_DIR (not the in-memory job store), so the Exports page
+    persists across navigation, refreshes, and restarts — the user can always get
+    back to their clips.
+    """
+    exports = []
+    try:
+        for job_id in sorted(os.listdir(OUTPUT_DIR)):
+            if not is_safe_id(job_id):
+                continue
+            job_path = os.path.join(OUTPUT_DIR, job_id)
+            if not os.path.isdir(job_path):
+                continue
+            metas = glob.glob(os.path.join(job_path, "*_metadata.json"))
+            if not metas:
+                continue
+            try:
+                with open(metas[0], "r") as f:
+                    data = json.load(f)
+            except Exception:
+                continue
+            base_name = os.path.basename(metas[0]).replace("_metadata.json", "")
+            clips = []
+            for i, clip in enumerate(data.get("shorts", [])):
+                vu = clip.get("video_url")
+                fname = vu.split("/")[-1] if vu else f"{base_name}_clip_{i + 1}.mp4"
+                fname = os.path.basename(fname)
+                fpath = os.path.join(job_path, fname)
+                if os.path.exists(fpath) and os.path.getsize(fpath) > 0:
+                    clips.append({
+                        "title": clip.get("video_title_for_youtube_short") or f"Clip {i + 1}",
+                        "video_url": f"/videos/{job_id}/{fname}",
+                        "index": i,
+                    })
+            if clips:
+                label = base_name[len(job_id) + 1:] if base_name.startswith(job_id + "_") else base_name
+                label = label.replace("_", " ").strip() or "Sermon"
+                try:
+                    created = os.path.getmtime(job_path)
+                except OSError:
+                    created = 0
+                exports.append({"job_id": job_id, "label": label, "created": created, "clips": clips})
+    except Exception as e:
+        print(f"⚠️ Exports listing error: {e}")
+    exports.sort(key=lambda e: e["created"], reverse=True)
+    return {"exports": exports}
+
+
 # ---------------------------------------------------------------------------
 # Serve the built dashboard (for the Electron desktop app / single-port mode).
 # Mounted LAST so it can't shadow the /api, /videos, or /thumbnails routes.

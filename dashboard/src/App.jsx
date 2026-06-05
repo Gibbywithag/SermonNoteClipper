@@ -3,6 +3,7 @@ import { Upload, FileVideo, Sparkles, Youtube, Instagram, LogOut, ChevronDown, C
 import KeyInput from './components/KeyInput';
 import MediaInput from './components/MediaInput';
 import ResultCard from './components/ResultCard';
+import ExportsView from './components/ExportsView';
 // import Gallery from './components/Gallery';
 import { getApiUrl } from './config';
 
@@ -54,7 +55,7 @@ const TikTokIcon = ({ size = 16, className = "" }) => (
 );
 
 const SESSION_KEY = 'sermon_clipper_session';
-const SESSION_MAX_AGE = 3600000; // 1 hour (matches server job retention)
+const SESSION_MAX_AGE = 7 * 24 * 3600000; // 7 days (matches server clip retention)
 
 // Mock polling function
 const pollJob = async (jobId) => {
@@ -263,6 +264,14 @@ function App() {
         </button>
 
         <button
+          onClick={() => setActiveTab('exports')}
+          className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors ${activeTab === 'exports' ? 'bg-primary/10 text-primary' : 'text-muted hover:text-ink hover:bg-stone'}`}
+        >
+          <LayoutGrid size={20} />
+          <span className="font-medium hidden lg:block">Exports</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('settings')}
           className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-colors ${activeTab === 'settings' ? 'bg-primary/10 text-primary' : 'text-muted hover:text-ink hover:bg-stone'}`}
         >
@@ -400,6 +409,9 @@ function App() {
 
             </div>
           )}
+
+          {/* View: Exports — persistent library of all generated clips */}
+          {activeTab === 'exports' && <ExportsView />}
 
           {/* View: Gallery */}
           {/* {activeTab === 'gallery' && (
