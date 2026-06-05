@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Instagram, Youtube, Video, AlertCircle, Loader2, Wand2, Type, Languages } from 'lucide-react';
+import { Download, Instagram, Video, AlertCircle, Loader2, Wand2, Type, Languages } from 'lucide-react';
 import { getApiUrl } from '../config';
 import SubtitleModal from './SubtitleModal';
 import HookModal from './HookModal';
@@ -326,9 +326,9 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
             </div>
 
             {/* Right: Content & Details */}
-            <div className="flex-1 p-4 md:p-5 flex flex-col bg-surface overflow-hidden min-w-0">
-                <div className="mb-4">
-                    <h3 className="text-base font-bold text-ink leading-tight line-clamp-2 mb-2 break-words" title={clip.video_title_for_youtube_short}>
+            <div className="flex-1 p-5 md:p-6 flex flex-col bg-surface overflow-hidden min-w-0">
+                <div className="mb-5">
+                    <h3 className="text-base font-bold text-ink leading-snug line-clamp-2 mb-2.5 break-words" title={clip.video_title_for_youtube_short}>
                         {clip.video_title_for_youtube_short || "Viral Clip Generated"}
                     </h3>
                     <div className="flex flex-wrap gap-2 text-[10px] text-muted font-mono">
@@ -339,26 +339,16 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                 </div>
 
                 {/* Scrollable Descriptions Area */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2 mb-4">
-                    {/* YouTube */}
-                    <div className="bg-stone rounded-lg p-3 border border-line">
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-red-600 mb-1.5 uppercase tracking-wider">
-                            <Youtube size={12} className="shrink-0" /> <span className="truncate">YouTube Title</span>
-                        </div>
-                        <p className="text-xs text-ink/80 select-all break-words">
-                            {clip.video_title_for_youtube_short || "Viral Short Video"}
-                        </p>
-                    </div>
-
-                    {/* TikTok / IG */}
-                    <div className="bg-stone rounded-lg p-3 border border-line">
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wider">
+                <div className="flex-1 overflow-y-auto custom-scrollbar mb-5">
+                    {/* TikTok / IG Caption */}
+                    <div className="bg-stone rounded-xl p-4 border border-line">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted mb-2 uppercase tracking-wider">
                             <Video size={12} className="text-cyan-600 shrink-0" />
                             <span className="text-muted">/</span>
                             <Instagram size={12} className="text-pink-500 shrink-0" />
                             <span className="truncate">Caption</span>
                         </div>
-                        <p className="text-xs text-ink/80 line-clamp-3 hover:line-clamp-none transition-all cursor-pointer select-all break-words">
+                        <p className="text-xs leading-relaxed text-ink/80 line-clamp-4 hover:line-clamp-none transition-all cursor-pointer select-all break-words">
                             {clip.video_description_for_tiktok || clip.video_description_for_instagram}
                         </p>
                     </div>
@@ -373,7 +363,7 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                 )}
 
                 {/* Actions Footer */}
-                <div className="mt-auto pt-4 border-t border-line space-y-3">
+                <div className="mt-auto pt-5 border-t border-line space-y-3">
                     {/* Primary action: Download */}
                     <button
                         onClick={async (e) => {
@@ -402,41 +392,41 @@ export default function ResultCard({ clip, index, jobId, geminiApiKey, elevenLab
                     </button>
 
                     {/* Secondary "enhance" actions — subordinate ghost buttons */}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2.5">
                         <button
                             onClick={handleAutoEdit}
                             disabled={isEditing}
-                            className="py-1.5 bg-stone hover:bg-line/60 text-ink border border-line rounded-lg text-[11px] font-medium transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 truncate px-1.5"
+                            className="px-3 py-2 bg-stone hover:bg-line/60 text-ink border border-line rounded-lg text-xs font-medium transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 whitespace-nowrap"
                         >
-                            {isEditing ? <Loader2 size={12} className="animate-spin shrink-0" /> : <Wand2 size={12} className="text-muted shrink-0" />}
-                            {isEditing ? 'Editing...' : 'Auto Edit'}
+                            {isEditing ? <Loader2 size={13} className="animate-spin shrink-0" /> : <Wand2 size={13} className="text-muted shrink-0" />}
+                            {isEditing ? 'Editing…' : 'Auto Edit'}
                         </button>
 
                         <button
                             onClick={() => setShowSubtitleModal(true)}
                             disabled={isSubtitling}
-                            className="py-1.5 bg-stone hover:bg-line/60 text-ink border border-line rounded-lg text-[11px] font-medium transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 truncate px-1.5"
+                            className="px-3 py-2 bg-stone hover:bg-line/60 text-ink border border-line rounded-lg text-xs font-medium transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 whitespace-nowrap"
                         >
-                            {isSubtitling ? <Loader2 size={12} className="animate-spin shrink-0" /> : <Type size={12} className="text-muted shrink-0" />}
-                            {isSubtitling ? 'Adding...' : 'Subtitles'}
+                            {isSubtitling ? <Loader2 size={13} className="animate-spin shrink-0" /> : <Type size={13} className="text-muted shrink-0" />}
+                            {isSubtitling ? 'Adding…' : 'Subtitles'}
                         </button>
 
                         <button
                             onClick={() => setShowHookModal(true)}
                             disabled={isHooking}
-                            className="py-1.5 bg-stone hover:bg-line/60 text-ink border border-line rounded-lg text-[11px] font-medium transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 truncate px-1.5"
+                            className="px-3 py-2 bg-stone hover:bg-line/60 text-ink border border-line rounded-lg text-xs font-medium transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 whitespace-nowrap"
                         >
-                            {isHooking ? <Loader2 size={12} className="animate-spin shrink-0" /> : <Wand2 size={12} className="text-muted shrink-0" />}
-                            {isHooking ? 'Adding...' : 'Viral Hook'}
+                            {isHooking ? <Loader2 size={13} className="animate-spin shrink-0" /> : <Wand2 size={13} className="text-muted shrink-0" />}
+                            {isHooking ? 'Adding…' : 'Viral Hook'}
                         </button>
 
                         <button
                             onClick={() => setShowTranslateModal(true)}
                             disabled={isTranslating}
-                            className="py-1.5 bg-stone hover:bg-line/60 text-ink border border-line rounded-lg text-[11px] font-medium transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 truncate px-1.5"
+                            className="px-3 py-2 bg-stone hover:bg-line/60 text-ink border border-line rounded-lg text-xs font-medium transition-colors active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 whitespace-nowrap"
                         >
-                            {isTranslating ? <Loader2 size={12} className="animate-spin shrink-0" /> : <Languages size={12} className="text-muted shrink-0" />}
-                            {isTranslating ? 'Translating...' : 'Dub Voice'}
+                            {isTranslating ? <Loader2 size={13} className="animate-spin shrink-0" /> : <Languages size={13} className="text-muted shrink-0" />}
+                            {isTranslating ? 'Dubbing…' : 'Dub Voice'}
                         </button>
                     </div>
                 </div>

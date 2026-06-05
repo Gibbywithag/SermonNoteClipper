@@ -72,6 +72,7 @@ def safe_filename(name: Optional[str]) -> str:
     """Reduce a user-supplied filename to a bare, safe basename."""
     base = os.path.basename(name or "")
     base = base.replace("\x00", "").lstrip(".")
+    base = re.sub(r"\s+", "_", base)  # no spaces → clean, URL-safe stored names
     return base or "file"
 
 

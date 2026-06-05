@@ -65,3 +65,6 @@ memory/
 
 # Playwright MCP screenshot artifacts
 .playwright-mcp/
+
+# Built launcher app (regenerated from .sermon-app.applescript)
+Sermon Clipper.app/
