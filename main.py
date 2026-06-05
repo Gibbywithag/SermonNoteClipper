@@ -653,7 +653,7 @@ def process_video_to_vertical(input_video, final_output_video):
         'ffmpeg', '-y', '-f', 'rawvideo', '-vcodec', 'rawvideo',
         '-s', f'{OUTPUT_WIDTH}x{OUTPUT_HEIGHT}', '-pix_fmt', 'bgr24',
         '-r', str(fps), '-i', '-', '-c:v', 'libx264',
-        '-preset', 'veryfast', '-crf', '23', '-an', temp_video_output
+        '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-an', temp_video_output
     ]
 
     ffmpeg_process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
@@ -1109,7 +1109,7 @@ if __name__ == '__main__':
                     '-ss', f"{start:.3f}",
                     '-to', f"{end:.3f}",
                     '-i', input_video,
-                    '-c:v', 'libx264', '-crf', '18', '-preset', 'veryfast',
+                    '-c:v', 'libx264', '-crf', '18', '-preset', 'fast',
                     '-c:a', 'aac',
                     clip_temp_path
                 ]
